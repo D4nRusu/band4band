@@ -1,29 +1,28 @@
 package main
 
 import (
-    "encoding/json"
+    "context"
     "log"
-    "net/http"
+
+    "github.com/D4nRusu/band4band/backend/internal/database"
 )
 
-type Response struct {
-    Message string `json:"message"`
-    Status  string `json:"status"`
-}
-
 func main() {
-    mux := http.NewServeMux()
+    ctx := context.Background()
 
-    mux.HandleFunc("GET /api/health", func(w http.ResponseWriter, r *http.Request) {
-        w.Header().Set("Content-Type", "application/json")
+    _, db, err := database.InitFirebase(ctx)
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer db.Close()
 
-        json.NewEncoder(w).Encode(Response{
-            Message: "Backend is running",
-            Status:  "ok",
-        })
+    _, err = db.Collection("test").Doc("connection").Set(ctx, map[string]interface{}{
+        "message": "Hello from Go!",
+        "working": true,
     })
+    if err != nil {
+        log.Fatal(err)
+    }
 
-    log.Println("Server listening on port 8080")
-
-    log.Fatal(http.ListenAndServe(":8080", mux))
+    log.Println("Firestore connection successful!")
 }

@@ -18,6 +18,8 @@ PAAM project
 - User profile picture !!!
 - Category charts <-> data visualisation 
 - Attach receipt/other stuff for expense
+- Squabble up
+- History of transactions 
 
 # Ideas
 

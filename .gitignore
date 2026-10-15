@@ -14,6 +14,8 @@ dist/
 .env
 .env.*
 !.env.example
+secrets/
+secrets.*
 
 # Editor / OS
 .idea/

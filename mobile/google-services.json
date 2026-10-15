@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "170534880306",
+    "project_id": "band4band-72f92",
+    "storage_bucket": "band4band-72f92.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:170534880306:android:2c0609364695aa8235a82b",
+        "android_client_info": {
+          "package_name": "com.band4band.mobile"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "170534880306-blln60bru62nijeo7qakjgl9qujtmfsj.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAa2Zf1xXpt1JOfEwFfzfOnbAEzXuq8LR8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "170534880306-blln60bru62nijeo7qakjgl9qujtmfsj.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
