@@ -1,0 +1,21 @@
+# ROOT GITIGNORE
+
+# Node / Expo
+node_modules/
+.expo/
+dist/
+
+# Go
+*.exe
+*.test
+*.out
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Editor / OS
+.idea/
+.DS_Store
+.vscode/
