@@ -65,8 +65,10 @@ export default function AuthScreen() {
   async function login() {
     setWorking(true);
     setError(null);
+    let stage = 'Google Play services check';
     try {
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      stage = 'Google account sign-in';
       const result = await GoogleSignin.signIn();
       if (!isSuccessResponse(result)) return;
       if (!result.data.idToken) {
@@ -74,11 +76,20 @@ export default function AuthScreen() {
         return;
       }
       const credential = GoogleAuthProvider.credential(result.data.idToken);
+      stage = 'Firebase credential exchange';
       await signInWithCredential(getAuth(), credential);
     } catch (cause) {
       if (isErrorWithCode(cause) && cause.code === statusCodes.SIGN_IN_CANCELLED) return;
-      // SDK error objects can contain credentials; do not display or log them.
-      setError('Google Sign-In failed. Check internet access, Google Play services, and the signing fingerprints in Firebase.');
+      // Show only a recognized error code; SDK error objects can contain credentials.
+      const code = isErrorWithCode(cause) && (
+        /^\d{1,5}$/.test(cause.code)
+        || /^auth\/[a-z-]{1,60}$/.test(cause.code)
+        || Object.values(statusCodes).includes(cause.code)
+      ) ? cause.code : 'unknown';
+      const hint = code === '10' || code === 'DEVELOPER_ERROR'
+        ? 'The APK signing certificate, Android package, or OAuth client does not match Google configuration.'
+        : 'Report this stage and error code to diagnose the failure.';
+      setError(`${stage} failed (${code}). ${hint}`);
     } finally {
       setWorking(false);
     }
