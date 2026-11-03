@@ -56,6 +56,6 @@ The Go module files remain at the backend root. Local environment configuration 
 
 The Go backend initializes Firebase Admin and serves HTTP on port 8080 using the standard-library router. `GET /api/health` is public. `GET /api/users/me` verifies a Firebase ID token from the Authorization Bearer header and returns the verified UID as JSON. Authentication middleware makes that UID available in the request context.
 
-The starter Expo application is established. Firestore user profiles and other application endpoints, database models, and business logic are not yet implemented.
+The Expo Android application uses native Google Sign-In and React Native Firebase Authentication in a development build. Google credentials are exchanged with Firebase; Firebase ID tokens authenticate requests to Go. Native Firebase manages session persistence, and the UI displays the UID returned by Go. The API base URL is configured through `EXPO_PUBLIC_API_BASE_URL`. iOS and web authentication are not configured yet. Firestore user profiles and other application endpoints, database models, and business logic are not yet implemented.
 
 Update this document when architectural decisions are made or changed.
