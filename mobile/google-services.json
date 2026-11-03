@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "170534880306-k34c1pjet95hvt3k6a773furjpkfed5d.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.band4band.mobile",
+            "certificate_hash": "54469fa1c1b37614f69688068f62dfeec502abab"
+          }
+        },
+        {
           "client_id": "170534880306-blln60bru62nijeo7qakjgl9qujtmfsj.apps.googleusercontent.com",
           "client_type": 3
         }
