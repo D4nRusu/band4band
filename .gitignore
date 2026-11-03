@@ -21,3 +21,6 @@ secrets.*
 .idea/
 .DS_Store
 .vscode/
+
+# Agent
+AGENTS.md
