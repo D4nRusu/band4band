@@ -1,1 +1,1 @@
-// This is where the user model should go
+package models

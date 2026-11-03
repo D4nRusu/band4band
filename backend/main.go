@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"net/http"
 
 	"github.com/joho/godotenv"
 
@@ -16,19 +17,17 @@ func main() {
 
 	ctx := context.Background()
 
-	_, db, err := database.InitFirebase(ctx)
+	app, db, err := database.InitFirebase(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer db.Close()
 
-	_, err = db.Collection("test").Doc("connection").Set(ctx, map[string]interface{}{
-		"message": "Hello from Go!",
-		"working": true,
-	})
+	authClient, err := app.Auth(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	log.Println("Firestore connection successful!")
+	log.Println("Listening on :8080")
+	log.Fatal(http.ListenAndServe(":8080", newRouter(authClient)))
 }
