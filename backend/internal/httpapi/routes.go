@@ -1,11 +1,12 @@
-package main
+package httpapi
 
 import (
 	"encoding/json"
 	"net/http"
 )
 
-func newRouter(verifier tokenVerifier) http.Handler {
+// NewRouter registers the public health endpoint and authenticated user endpoint.
+func NewRouter(verifier TokenVerifier) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -13,12 +14,12 @@ func newRouter(verifier tokenVerifier) http.Handler {
 			return
 		}
 	})
-	mux.Handle("GET /api/users/me", authenticate(verifier, http.HandlerFunc(currentUser)))
+	mux.Handle("GET /api/users/me", Authenticate(verifier, http.HandlerFunc(currentUser)))
 	return mux
 }
 
 func currentUser(w http.ResponseWriter, r *http.Request) {
-	uid, ok := uidFromContext(r.Context())
+	uid, ok := UIDFromContext(r.Context())
 	if !ok {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return

@@ -8,6 +8,7 @@ import (
 	"github.com/joho/godotenv"
 
 	"github.com/D4nRusu/band4band/backend/internal/database"
+	"github.com/D4nRusu/band4band/backend/internal/httpapi"
 )
 
 func main() {
@@ -29,5 +30,5 @@ func main() {
 	}
 
 	log.Println("Listening on :8080")
-	log.Fatal(http.ListenAndServe(":8080", newRouter(authClient)))
+	log.Fatal(http.ListenAndServe(":8080", httpapi.NewRouter(authClient)))
 }

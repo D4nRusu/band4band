@@ -1,4 +1,4 @@
-package main
+package httpapi
 
 import (
 	"context"
@@ -8,18 +8,21 @@ import (
 	"firebase.google.com/go/v4/auth"
 )
 
-type tokenVerifier interface {
+// TokenVerifier verifies Firebase ID tokens.
+type TokenVerifier interface {
 	VerifyIDToken(context.Context, string) (*auth.Token, error)
 }
 
 type uidContextKey struct{}
 
-func uidFromContext(ctx context.Context) (string, bool) {
+// UIDFromContext returns the authenticated Firebase UID, if present.
+func UIDFromContext(ctx context.Context) (string, bool) {
 	uid, ok := ctx.Value(uidContextKey{}).(string)
 	return uid, ok && uid != ""
 }
 
-func authenticate(verifier tokenVerifier, next http.Handler) http.Handler {
+// Authenticate requires a valid Firebase Bearer token before calling next.
+func Authenticate(verifier TokenVerifier, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		headers := r.Header.Values("Authorization")
 		if len(headers) != 1 {

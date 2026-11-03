@@ -1,4 +1,4 @@
-package main
+package httpapi_test
 
 import (
 	"context"
@@ -9,6 +9,8 @@ import (
 	"testing"
 
 	"firebase.google.com/go/v4/auth"
+
+	"github.com/D4nRusu/band4band/backend/internal/httpapi"
 )
 
 type verifierFunc func(context.Context, string) (*auth.Token, error)
@@ -27,7 +29,7 @@ func TestAuthenticateRejectsMalformedHeaders(t *testing.T) {
 				t.Fatal("verifier called for malformed header")
 				return nil, nil
 			})
-			handler := authenticate(verifier, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+			handler := httpapi.Authenticate(verifier, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 				t.Fatal("downstream handler called")
 			}))
 			r := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -65,7 +67,7 @@ func TestAuthenticateRejectsUnverifiedTokens(t *testing.T) {
 			verifier := verifierFunc(func(context.Context, string) (*auth.Token, error) {
 				return tc.token, tc.err
 			})
-			handler := authenticate(verifier, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+			handler := httpapi.Authenticate(verifier, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 				t.Fatal("downstream handler called")
 			}))
 			r := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -89,9 +91,9 @@ func TestAuthenticateStoresUID(t *testing.T) {
 		return &auth.Token{UID: "firebase-uid"}, nil
 	})
 	called := false
-	handler := authenticate(verifier, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := httpapi.Authenticate(verifier, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		called = true
-		if uid, ok := uidFromContext(r.Context()); !ok || uid != "firebase-uid" {
+		if uid, ok := httpapi.UIDFromContext(r.Context()); !ok || uid != "firebase-uid" {
 			t.Fatalf("context UID = %q, %v", uid, ok)
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -101,7 +103,7 @@ func TestAuthenticateStoresUID(t *testing.T) {
 	if !called || w.Code != http.StatusNoContent {
 		t.Fatalf("handler called = %v, status = %d", called, w.Code)
 	}
-	if _, ok := uidFromContext(r.Context()); ok {
+	if _, ok := httpapi.UIDFromContext(r.Context()); ok {
 		t.Fatal("original request context was modified")
 	}
 }
@@ -124,7 +126,7 @@ func TestRoutes(t *testing.T) {
 				r.Header.Set("Authorization", tc.header)
 			}
 			w := httptest.NewRecorder()
-			newRouter(verifier).ServeHTTP(w, r)
+			httpapi.NewRouter(verifier).ServeHTTP(w, r)
 			if w.Code != tc.status {
 				t.Fatalf("status = %d, want %d", w.Code, tc.status)
 			}

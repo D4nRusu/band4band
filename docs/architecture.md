@@ -42,6 +42,16 @@ PAAM is a mobile application for tracking shared expenses, individual debts, and
 - Financial operations must not silently alter historical records.
 - Debt simplification produces suggested settlements rather than modifying expenses.
 
+## Backend layout
+
+- `backend/main.go`: application entry point and Firebase/server startup.
+- `backend/internal/httpapi/`: HTTP routing, authentication middleware, and request context helpers.
+- `backend/internal/database/`: Firebase Admin initialization.
+- `backend/tests/httpapi/`: HTTP and middleware tests, kept separate from implementation files and run with `go test ./...`.
+- `backend/internal/handlers/`, `models/`, and `services/`: existing empty packages; no application behavior is implemented there yet.
+
+The Go module files remain at the backend root. Local environment configuration also remains there to preserve the existing startup behavior.
+
 ## Development status
 
 The Go backend initializes Firebase Admin and serves HTTP on port 8080 using the standard-library router. `GET /api/health` is public. `GET /api/users/me` verifies a Firebase ID token from the Authorization Bearer header and returns the verified UID as JSON. Authentication middleware makes that UID available in the request context.
