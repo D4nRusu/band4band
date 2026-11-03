@@ -1,28 +1,34 @@
 package main
 
 import (
-    "context"
-    "log"
+	"context"
+	"log"
 
-    "github.com/D4nRusu/band4band/backend/internal/database"
+	"github.com/joho/godotenv"
+
+	"github.com/D4nRusu/band4band/backend/internal/database"
 )
 
 func main() {
-    ctx := context.Background()
+	if err := godotenv.Load(); err != nil {
+		log.Println("No .env file found, using system environment")
+	}
 
-    _, db, err := database.InitFirebase(ctx)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer db.Close()
+	ctx := context.Background()
 
-    _, err = db.Collection("test").Doc("connection").Set(ctx, map[string]interface{}{
-        "message": "Hello from Go!",
-        "working": true,
-    })
-    if err != nil {
-        log.Fatal(err)
-    }
+	_, db, err := database.InitFirebase(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
 
-    log.Println("Firestore connection successful!")
+	_, err = db.Collection("test").Doc("connection").Set(ctx, map[string]interface{}{
+		"message": "Hello from Go!",
+		"working": true,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	log.Println("Firestore connection successful!")
 }
