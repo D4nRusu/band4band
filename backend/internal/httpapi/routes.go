@@ -5,14 +5,18 @@ import (
 	"net/http"
 )
 
-// NewRouter registers the public health endpoint and authenticated profile endpoints.
-func NewRouter(verifier TokenVerifier, users UserStore) http.Handler {
+// NewRouter registers public health and authenticated profile/group endpoints.
+func NewRouter(verifier TokenVerifier, users UserStore, groups GroupStore) http.Handler {
 	mux := http.NewServeMux()
 	handler := userHandler{users: users}
+	groupsHandler := groupHandler{groups: groups}
 
 	mux.HandleFunc("GET /api/health", health)
 	mux.Handle("GET /api/users/me", Authenticate(verifier, http.HandlerFunc(handler.currentUser)))
 	mux.Handle("PUT /api/users/me/username", Authenticate(verifier, http.HandlerFunc(handler.setUsername)))
+
+	mux.Handle("GET /api/groups", Authenticate(verifier, http.HandlerFunc(groupsHandler.listGroups)))
+	mux.Handle("POST /api/groups", Authenticate(verifier, http.HandlerFunc(groupsHandler.createGroup)))
 
 	return mux
 }
