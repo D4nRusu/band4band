@@ -29,9 +29,13 @@ func (s *UserStore) GetOrCreate(ctx context.Context, identity models.Identity) (
 	if status.Code(err) == codes.NotFound {
 		// Create, rather than Set, preserves an existing profile during concurrent logins.
 		_, err = ref.Create(ctx, map[string]any{
-			"uid": identity.UID, "email": identity.Email, "name": identity.Name,
-			"username": "", "photoURL": identity.PhotoURL,
-			"createdAt": firestore.ServerTimestamp, "profileComplete": false,
+			"uid":             identity.UID,
+			"email":           identity.Email,
+			"name":            identity.Name,
+			"username":        "",
+			"photoURL":        identity.PhotoURL,
+			"createdAt":       firestore.ServerTimestamp,
+			"profileComplete": false,
 		})
 		if err != nil && status.Code(err) != codes.AlreadyExists {
 			return models.User{}, err

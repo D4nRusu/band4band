@@ -45,7 +45,7 @@ PAAM is a mobile application for tracking shared expenses, individual debts, and
 ## Backend layout
 
 - `backend/main.go`: application entry point and Firebase/server startup.
-- `backend/internal/httpapi/`: HTTP routing, authentication middleware, and request context helpers.
+- `backend/internal/httpapi/`: HTTP routing, authentication middleware, and request context helpers. Route registration is in `routes.go`, profile handlers in `users.go`, and response/error mapping in `user_responses.go`.
 - `backend/internal/database/`: Firebase Admin initialization and Firestore user/profile storage.
 - `backend/internal/models/`: profile fields, verified identity data, and username validation.
 - `backend/tests/`: HTTP, model, and Firestore emulator tests, separate from implementation files.
@@ -58,6 +58,16 @@ The Go module files remain at the backend root. Local environment configuration 
 The Go backend initializes Firebase Admin and serves HTTP on port 8080 using the standard-library router. `GET /api/health` is public. `GET /api/users/me` verifies a Firebase ID token from the Authorization Bearer header and returns the stored user profile as JSON. Authentication middleware makes the UID and verified identity claims available in the request context.
 
 The Expo Android application uses native Google Sign-In and React Native Firebase Authentication in a development build. Google credentials are exchanged with Firebase; Firebase ID tokens authenticate requests to Go. Native Firebase manages session persistence, and the UI displays the profile returned by Go, including Google photo (or a default avatar), name, email, username, creation date, and UID. First-login onboarding asks for a unique username. The API base URL is configured through `EXPO_PUBLIC_API_BASE_URL`. iOS and web authentication are not configured yet. Friendships, groups, expenses, photo uploads, profile editing, and user-search endpoints are not yet implemented.
+
+## Mobile authentication layout
+
+- `src/components/auth-screen.android.tsx`: screen composition and authenticated profile controls.
+- `src/hooks/use-auth-session.android.ts`: Google/Firebase sign-in, session restoration, and sign-out.
+- `src/hooks/use-user-profile.ts`: profile loading, username submission, request cancellation, and feedback state.
+- `src/components/profile-details.tsx` and `username-form.tsx`: profile display and username form rendering.
+- `src/lib/api.ts`: authenticated profile requests and response validation.
+
+The authenticated profile subtree is keyed by Firebase UID, so profile and form state are discarded on sign-out or account changes.
 
 ## User profiles and onboarding
 

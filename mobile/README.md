@@ -28,7 +28,7 @@ In Firebase Console:
 4. Register the **SHA-1 and SHA-256 fingerprints of the certificate signing the actual development APK**. Different build/signing methods can use different keys. Do not assume the upload/release certificate is the development certificate.
 5. Download the refreshed `google-services.json` into `mobile/google-services.json`. Its Android package must stay `com.band4band.mobile`.
 
-The Google Sign-In configuration uses the existing Web OAuth client (`client_type: 3`) from that file. It is a public client identifier, not a client secret. If you change Firebase projects or OAuth clients, update `webClientId` in `src/components/auth-screen.android.tsx` to the corresponding Web client. Never use an Android client ID for that field.
+The Google Sign-In configuration uses the existing Web OAuth client (`client_type: 3`) from that file. It is a public client identifier, not a client secret. If you change Firebase projects or OAuth clients, update `webClientId` in `src/hooks/use-auth-session.android.ts` to the corresponding Web client. Never use an Android client ID for that field.
 
 To manage EAS signing credentials, use:
 

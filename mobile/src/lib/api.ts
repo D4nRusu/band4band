@@ -8,7 +8,7 @@ export interface UserProfile {
   profileComplete: boolean;
 }
 
-type AuthenticatedUser = { getIdToken(): Promise<string> };
+export type AuthenticatedUser = { getIdToken(): Promise<string> };
 
 export function getCurrentUser(user: AuthenticatedUser, signal?: AbortSignal): Promise<UserProfile> {
   return requestProfile(user, '/api/users/me', { signal });
@@ -20,7 +20,9 @@ export function completeProfile(
   signal?: AbortSignal,
 ): Promise<UserProfile> {
   return requestProfile(user, '/api/users/me/username', {
-    method: 'PUT', body: JSON.stringify({ username }), signal,
+    method: 'PUT',
+    body: JSON.stringify({ username }),
+    signal,
   });
 }
 
@@ -29,6 +31,27 @@ async function requestProfile(
   path: string,
   options: { method?: string; body?: string; signal?: AbortSignal },
 ): Promise<UserProfile> {
+  const baseUrl = getApiBaseUrl();
+  const firebaseIdToken = await getFirebaseIdToken(user);
+  const response = await fetch(`${baseUrl}${path}`, {
+    ...options,
+    headers: {
+      Authorization: `Bearer ${firebaseIdToken}`,
+      'Content-Type': 'application/json',
+    },
+    redirect: 'error',
+  });
+
+  await checkProfileResponse(response);
+
+  const body: unknown = await response.json();
+  if (!isUserProfile(body)) {
+    throw new Error('The backend returned an invalid user response.');
+  }
+  return body;
+}
+
+function getApiBaseUrl(): string {
   const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL?.trim();
   if (!baseUrl) throw new Error('Set EXPO_PUBLIC_API_BASE_URL and restart Metro.');
   const url = new URL(baseUrl);
@@ -38,18 +61,19 @@ async function requestProfile(
   if (url.username || url.password || url.search || url.hash) {
     throw new Error('The API URL must not contain credentials, a query, or a fragment.');
   }
-  // Firebase ID token, not the Google token used for the credential exchange.
-  let firebaseIdToken: string;
+  return baseUrl.replace(/\/+$/, '');
+}
+
+async function getFirebaseIdToken(user: AuthenticatedUser): Promise<string> {
+  // Firebase refreshes its ID token when needed; the Google token is never sent to Go.
   try {
-    firebaseIdToken = await user.getIdToken();
+    return await user.getIdToken();
   } catch {
     throw new Error('Could not obtain a Firebase ID token. Check your connection or sign in again.');
   }
-  const response = await fetch(`${baseUrl.replace(/\/+$/, '')}${path}`, {
-    ...options,
-    headers: { Authorization: `Bearer ${firebaseIdToken}`, 'Content-Type': 'application/json' },
-    redirect: 'error',
-  });
+}
+
+async function checkProfileResponse(response: Response): Promise<void> {
   if (response.status === 409) {
     const conflict: unknown = await response.json();
     if (conflict && typeof conflict === 'object' && 'code' in conflict && conflict.code === 'username_taken') {
@@ -65,17 +89,26 @@ async function requestProfile(
       ? 'The backend rejected the Firebase session. Sign out and sign in again.'
       : `The backend returned HTTP ${response.status}.`);
   }
-  const body: unknown = await response.json();
-  if (!body || typeof body !== 'object' || !('uid' in body)
-    || typeof body.uid !== 'string' || !body.uid
-    || !('email' in body) || typeof body.email !== 'string'
-    || !('name' in body) || typeof body.name !== 'string'
-    || !('username' in body) || typeof body.username !== 'string'
-    || !('photoURL' in body) || typeof body.photoURL !== 'string'
-    || !('createdAt' in body) || typeof body.createdAt !== 'string' || !Number.isFinite(Date.parse(body.createdAt))
-    || !('profileComplete' in body) || typeof body.profileComplete !== 'boolean'
-    || (body.profileComplete ? !/^[a-z0-9_]{3,30}$/.test(body.username) : body.username !== '')) {
-    throw new Error('The backend returned an invalid user response.');
+}
+
+function isUserProfile(value: unknown): value is UserProfile {
+  if (!value || typeof value !== 'object') return false;
+
+  const profile = value as Record<string, unknown>;
+  const hasIdentity = typeof profile.uid === 'string' && profile.uid.length > 0;
+  const hasDisplayFields = typeof profile.email === 'string'
+    && typeof profile.name === 'string'
+    && typeof profile.photoURL === 'string';
+  const hasCreationDate = typeof profile.createdAt === 'string'
+    && Number.isFinite(Date.parse(profile.createdAt));
+
+  if (!hasIdentity || !hasDisplayFields || !hasCreationDate) return false;
+  if (typeof profile.username !== 'string' || typeof profile.profileComplete !== 'boolean') {
+    return false;
   }
-  return body as UserProfile;
+
+  if (profile.profileComplete) {
+    return /^[a-z0-9_]{3,30}$/.test(profile.username);
+  }
+  return profile.username === '';
 }
