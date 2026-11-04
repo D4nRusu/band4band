@@ -24,11 +24,13 @@ func (h userHandler) currentUser(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
+
 	user, err := h.users.GetOrCreate(r.Context(), identity)
 	if err != nil {
 		writeUserError(w, err)
 		return
 	}
+
 	writeUser(w, user)
 }
 
@@ -74,5 +76,6 @@ func (h userHandler) setUsername(w http.ResponseWriter, r *http.Request) {
 		writeUserError(w, err)
 		return
 	}
+
 	writeUser(w, user)
 }

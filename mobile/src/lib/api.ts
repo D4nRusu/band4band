@@ -48,19 +48,23 @@ async function requestProfile(
   if (!isUserProfile(body)) {
     throw new Error('The backend returned an invalid user response.');
   }
+
   return body;
 }
 
 function getApiBaseUrl(): string {
   const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL?.trim();
   if (!baseUrl) throw new Error('Set EXPO_PUBLIC_API_BASE_URL and restart Metro.');
+
   const url = new URL(baseUrl);
   if (url.protocol !== 'https:' && !(url.protocol === 'http:' && __DEV__)) {
     throw new Error('The API URL must use HTTPS (HTTP is allowed only in development).');
   }
+
   if (url.username || url.password || url.search || url.hash) {
     throw new Error('The API URL must not contain credentials, a query, or a fragment.');
   }
+
   return baseUrl.replace(/\/+$/, '');
 }
 
@@ -79,11 +83,14 @@ async function checkProfileResponse(response: Response): Promise<void> {
     if (conflict && typeof conflict === 'object' && 'code' in conflict && conflict.code === 'username_taken') {
       throw new Error('That username is already taken. Please choose another.');
     }
+
     throw new Error('Your profile already has a username. Reload your profile.');
   }
+
   if (response.status === 400) {
     throw new Error('Use 3–30 letters, numbers, or underscores for your username.');
   }
+
   if (!response.ok) {
     throw new Error(response.status === 401
       ? 'The backend rejected the Firebase session. Sign out and sign in again.'
@@ -103,6 +110,7 @@ function isUserProfile(value: unknown): value is UserProfile {
     && Number.isFinite(Date.parse(profile.createdAt));
 
   if (!hasIdentity || !hasDisplayFields || !hasCreationDate) return false;
+
   if (typeof profile.username !== 'string' || typeof profile.profileComplete !== 'boolean') {
     return false;
   }
@@ -110,5 +118,6 @@ function isUserProfile(value: unknown): value is UserProfile {
   if (profile.profileComplete) {
     return /^[a-z0-9_]{3,30}$/.test(profile.username);
   }
+
   return profile.username === '';
 }

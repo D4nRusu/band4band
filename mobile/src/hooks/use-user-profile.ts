@@ -26,6 +26,7 @@ export function useUserProfile(user: AuthenticatedUser) {
       setChecking(false);
       setError('The backend request timed out. Check the API URL and connection, then retry.');
     }, 15000);
+
     getCurrentUser(user, controller.signal)
       .then((currentProfile) => {
         if (!controller.signal.aborted) setProfile(currentProfile);
@@ -39,6 +40,7 @@ export function useUserProfile(user: AuthenticatedUser) {
         clearTimeout(timeout);
         if (!controller.signal.aborted) setChecking(false);
       });
+
     return () => {
       clearTimeout(timeout);
       controller.abort();
@@ -50,11 +52,14 @@ export function useUserProfile(user: AuthenticatedUser) {
       setUsernameError('Use 3–30 letters, numbers, or underscores.');
       return;
     }
+
     setSaving(true);
     setUsernameError(null);
+
     const controller = new AbortController();
     saveRequest.current = controller;
     const timeout = setTimeout(() => controller.abort(), 15000);
+
     try {
       const saved = await completeProfile(user, username, controller.signal);
       if (!controller.signal.aborted) setProfile(saved);
@@ -67,9 +72,11 @@ export function useUserProfile(user: AuthenticatedUser) {
       } else if (cause instanceof Error) {
         message = cause.message;
       }
+
       setUsernameError(message);
     } finally {
       clearTimeout(timeout);
+
       if (saveRequest.current === controller) {
         saveRequest.current = null;
         setSaving(false);

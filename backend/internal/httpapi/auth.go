@@ -37,16 +37,19 @@ func Authenticate(verifier TokenVerifier, next http.Handler) http.Handler {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
+
 		parts := strings.Fields(headers[0])
 		if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
+
 		token, err := verifier.VerifyIDToken(r.Context(), parts[1])
 		if err != nil || token == nil || token.UID == "" {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
+
 		ctx := context.WithValue(r.Context(), uidContextKey{}, token.UID)
 		email, _ := token.Claims["email"].(string)
 		name, _ := token.Claims["name"].(string)

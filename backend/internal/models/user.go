@@ -20,6 +20,7 @@ func NormalizeUsername(username string) (string, error) {
 	if !usernamePattern.MatchString(username) {
 		return "", ErrInvalidUsername
 	}
+
 	return strings.ToLower(username), nil
 }
 

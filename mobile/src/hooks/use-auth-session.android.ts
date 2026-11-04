@@ -30,20 +30,25 @@ export function useAuthSession() {
     setWorking(true);
     setError(null);
     let stage = 'Google Play services check';
+
     try {
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+
       stage = 'Google account sign-in';
       const result = await GoogleSignin.signIn();
+
       if (!isSuccessResponse(result)) return;
       if (!result.data.idToken) {
         setError('Google returned no ID token. Check the Web OAuth client configuration.');
         return;
       }
+
       const credential = GoogleAuthProvider.credential(result.data.idToken);
       stage = 'Firebase credential exchange';
       await signInWithCredential(getAuth(), credential);
     } catch (cause) {
       const message = signInErrorMessage(cause, stage);
+
       if (message) setError(message);
     } finally {
       setWorking(false);
@@ -53,6 +58,7 @@ export function useAuthSession() {
   async function logout() {
     setWorking(true);
     setError(null);
+
     try {
       await signOut(getAuth());
       await GoogleSignin.signOut();
@@ -75,6 +81,7 @@ function signInErrorMessage(cause: unknown, stage: string): string | null {
     const isNativeCode = /^\d{1,5}$/.test(cause.code);
     const isFirebaseCode = /^auth\/[a-z-]{1,60}$/.test(cause.code);
     const isGoogleCode = Object.values(statusCodes).includes(cause.code);
+
     if (isNativeCode || isFirebaseCode || isGoogleCode) code = cause.code;
   }
 

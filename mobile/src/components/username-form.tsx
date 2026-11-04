@@ -34,7 +34,7 @@ export function UsernameForm({ username, error, disabled, onChange, onSubmit }: 
         style={[styles.input, { color: theme.text, borderColor: theme.textSecondary }]}
         onSubmitEditing={submit}
       />
-      <ThemedText type="small">3–30 letters, numbers, or underscores. Saved in lowercase.</ThemedText>
+      <ThemedText type="small">3-30 letters, numbers, or underscores. Saved in lowercase.</ThemedText>
       {error && <ThemedText accessibilityRole="alert">{error}</ThemedText>}
       <Button title="Save username" disabled={disabled} onPress={submit} />
     </>

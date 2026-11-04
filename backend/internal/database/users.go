@@ -24,6 +24,7 @@ func (s *UserStore) GetOrCreate(ctx context.Context, identity models.Identity) (
 	if identity.UID == "" || strings.Contains(identity.UID, "/") {
 		return models.User{}, fmt.Errorf("invalid user document ID")
 	}
+
 	ref := s.db.Collection("users").Doc(identity.UID)
 	snapshot, err := ref.Get(ctx)
 	if status.Code(err) == codes.NotFound {
@@ -40,15 +41,19 @@ func (s *UserStore) GetOrCreate(ctx context.Context, identity models.Identity) (
 		if err != nil && status.Code(err) != codes.AlreadyExists {
 			return models.User{}, err
 		}
+
 		snapshot, err = ref.Get(ctx)
 	}
+
 	if err != nil {
 		return models.User{}, err
 	}
+
 	var user models.User
 	if err := snapshot.DataTo(&user); err != nil {
 		return models.User{}, err
 	}
+
 	return user, nil
 }
 
@@ -58,9 +63,11 @@ func (s *UserStore) SetUsername(ctx context.Context, uid, username string) (mode
 	if err != nil {
 		return models.User{}, err
 	}
+
 	if uid == "" || strings.Contains(uid, "/") {
 		return models.User{}, fmt.Errorf("invalid user document ID")
 	}
+
 	userRef := s.db.Collection("users").Doc(uid)
 	nameRef := s.db.Collection("usernames").Doc(username)
 	var user models.User
@@ -69,31 +76,39 @@ func (s *UserStore) SetUsername(ctx context.Context, uid, username string) (mode
 		if err != nil {
 			return err
 		}
+
 		if err := snapshot.DataTo(&user); err != nil {
 			return err
 		}
+
 		if user.Username != "" {
 			if user.Username == username {
 				return nil // Safe retry if the first response was lost.
 			}
+
 			return models.ErrProfileComplete
 		}
+
 		_, err = tx.Get(nameRef)
 		if err == nil {
 			return models.ErrUsernameTaken
 		}
+
 		if status.Code(err) != codes.NotFound {
 			return err
 		}
+
 		if err := tx.Create(nameRef, map[string]any{"uid": uid}); err != nil {
 			return err
 		}
+
 		if err := tx.Update(userRef, []firestore.Update{
 			{Path: "username", Value: username},
 			{Path: "profileComplete", Value: true},
 		}); err != nil {
 			return err
 		}
+
 		user.Username = username
 		user.ProfileComplete = true
 		return nil
