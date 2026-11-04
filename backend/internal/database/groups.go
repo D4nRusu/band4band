@@ -4,8 +4,11 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 
 	"cloud.google.com/go/firestore"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/D4nRusu/band4band/backend/internal/models"
 )
@@ -93,30 +96,32 @@ func (s *GroupStore) Delete(ctx context.Context, uid, groupID string) error {
 		return fmt.Errorf("missing authenticated UID")
 	}
 
-	if groupID == "" {
-		return fmt.Errorf("missing group ID")
+	if groupID == "" || len(groupID) > 1500 || strings.Contains(groupID, "/") || groupID == "." || groupID == ".." {
+		return models.ErrInvalidGroupID
 	}
 
 	ref := s.db.Collection("groups").Doc(groupID)
 
-	snapshot, err := ref.Get(ctx)
-	if err != nil {
-		return err
-	}
+	// Check ownership and delete the membership-bearing document atomically.
+	return s.db.RunTransaction(ctx, func(ctx context.Context, tx *firestore.Transaction) error {
+		snapshot, err := tx.Get(ref)
+		if status.Code(err) == codes.NotFound {
+			return models.ErrGroupNotFound
+		}
 
-	var group models.Group
-	if err := snapshot.DataTo(&group); err != nil {
-		return err
-	}
+		if err != nil {
+			return err
+		}
 
-	if group.CreatedBy != uid {
-		return fmt.Errorf("user %s is not the creator of group %s", uid, groupID)
-	}
+		var group models.Group
+		if err := snapshot.DataTo(&group); err != nil {
+			return err
+		}
 
-	_, err = ref.Delete(ctx)
-	if err != nil {
-		return err
-	}
+		if group.CreatedBy != uid {
+			return models.ErrGroupForbidden
+		}
 
-	return nil
+		return tx.Delete(ref)
+	})
 }

@@ -3,6 +3,7 @@ import { ActivityIndicator, Button, FlatList, StyleSheet, View } from 'react-nat
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CreateGroupModal } from '@/components/create-group-modal';
+import { GroupCard } from '@/components/group-card';
 import { ThemedText } from '@/components/themed-text';
 import { useAuthSession } from '@/hooks/use-auth-session.android';
 import { useGroups } from '@/hooks/use-groups';
@@ -24,10 +25,13 @@ export default function GroupsScreen() {
   );
 }
 
-function UserGroups({ user }: { user: AuthenticatedUser }) {
-  const theme = useTheme();
-  const { groups, loading, error, creating, createError, submitGroup, reload, clearCreateError } = useGroups(user);
+function UserGroups({ user }: { user: AuthenticatedUser & { uid: string } }) {
+  const {
+    groups, loading, error, creating, createError, deletingID,
+    submitGroup, removeGroup, reload, clearCreateError,
+  } = useGroups(user);
   const [showCreate, setShowCreate] = useState(false);
+  const busy = loading || creating || deletingID !== null;
 
   function openCreate() {
     clearCreateError();
@@ -41,12 +45,12 @@ function UserGroups({ user }: { user: AuthenticatedUser }) {
 
   return (
     <>
-      <Button title="Create a new group" disabled={loading || creating} onPress={openCreate} />
+      <Button title="Create a new group" disabled={busy} onPress={openCreate} />
 
       {error && (
         <View style={styles.feedback}>
           <ThemedText accessibilityRole="alert">{error}</ThemedText>
-          <Button title="Retry" disabled={loading} onPress={reload} />
+          <Button title="Retry" disabled={busy} onPress={reload} />
         </View>
       )}
 
@@ -58,10 +62,8 @@ function UserGroups({ user }: { user: AuthenticatedUser }) {
         contentContainerStyle={styles.list}
         ListEmptyComponent={<GroupsEmptyState loading={loading} hasError={error !== null} />}
         renderItem={({ item }) => (
-          <View style={[styles.group, { backgroundColor: theme.backgroundElement }]}>
-            <ThemedText type="subtitle">{item.name}</ThemedText>
-            {item.description !== '' && <ThemedText>{item.description}</ThemedText>}
-          </View>
+          <GroupCard group={item} currentUID={user.uid} disabled={busy}
+            deleting={deletingID === item.id} onDelete={removeGroup} />
         )}
       />
 
@@ -84,5 +86,4 @@ const styles = StyleSheet.create({
   screen: { flex: 1, paddingHorizontal: 24, gap: 20 },
   feedback: { gap: 12 },
   list: { flexGrow: 1, gap: 12, paddingBottom: 24 },
-  group: { padding: 20, borderRadius: 12, gap: 8 },
 });

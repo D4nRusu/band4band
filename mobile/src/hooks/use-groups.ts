@@ -2,7 +2,7 @@ import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { AuthenticatedUser } from '@/lib/api';
-import { createGroup, getGroups, type Group, type GroupInput } from '@/lib/groups-api';
+import { createGroup, deleteGroup, getGroups, type Group, type GroupInput } from '@/lib/groups-api';
 
 export function useGroups(user: AuthenticatedUser) {
   const [groups, setGroups] = useState<Group[]>([]);
@@ -10,17 +10,23 @@ export function useGroups(user: AuthenticatedUser) {
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [deletingID, setDeletingID] = useState<string | null>(null);
   const createRequest = useRef<AbortController | null>(null);
+  const deleteRequest = useRef<AbortController | null>(null);
   const cancelLoad = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     return () => {
       createRequest.current?.abort();
       createRequest.current = null;
+      deleteRequest.current?.abort();
+      deleteRequest.current = null;
     };
   }, []);
 
   const reload = useCallback(() => {
+    if (deleteRequest.current) return;
+
     cancelLoad.current?.();
 
     const controller = new AbortController();
@@ -60,7 +66,7 @@ export function useGroups(user: AuthenticatedUser) {
   }, [reload]));
 
   async function submitGroup(input: GroupInput): Promise<boolean> {
-    if (createRequest.current) return false;
+    if (createRequest.current || deleteRequest.current) return false;
 
     const controller = new AbortController();
     createRequest.current = controller;
@@ -102,5 +108,47 @@ export function useGroups(user: AuthenticatedUser) {
     setCreateError(null);
   }
 
-  return { groups, loading, error, creating, createError, submitGroup, reload, clearCreateError };
+  async function removeGroup(groupID: string): Promise<void> {
+    if (deleteRequest.current || createRequest.current) return;
+
+    const controller = new AbortController();
+    deleteRequest.current = controller;
+    cancelLoad.current?.();
+    setLoading(false);
+    setDeletingID(groupID);
+    setError(null);
+
+    const timeout = setTimeout(() => controller.abort(), 15000);
+
+    try {
+      await deleteGroup(user, groupID, controller.signal);
+      if (controller.signal.aborted) return;
+
+      setGroups((previous) => previous.filter((group) => group.id !== groupID));
+    } catch (cause) {
+      if (deleteRequest.current !== controller) return;
+
+      let message = 'Could not delete your group.';
+
+      if (controller.signal.aborted) {
+        message = 'Deletion could not be confirmed. Refresh your groups before trying again.';
+      } else if (cause instanceof Error) {
+        message = cause.message;
+      }
+
+      setError(message);
+    } finally {
+      clearTimeout(timeout);
+
+      if (deleteRequest.current === controller) {
+        deleteRequest.current = null;
+        setDeletingID(null);
+      }
+    }
+  }
+
+  return {
+    groups, loading, error, creating, createError, deletingID,
+    submitGroup, removeGroup, reload, clearCreateError,
+  };
 }

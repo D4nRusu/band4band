@@ -123,6 +123,8 @@ A Firebase sign-in alone is not backend confirmation. A backend 401 generally me
 
 The Groups tab shows groups you belong to. Sign in from Home first, then open Groups. Use **Create a new group** to open the name/description dialog. The description is optional. On save, Go creates the group with your verified UID as its first member and the group appears in your list. Pull down to refresh; the list also refreshes when returning to the tab.
 
+Owners see a **Delete group** button on their own group cards. Confirming deletes the group for everyone; this cannot be undone. Go checks the verified UID against `createdBy` before deleting, even if someone bypasses the UI. Other members do not see the delete button. Leaving a group is not implemented yet.
+
 Names are limited to 1–100 characters and descriptions to 1,000 characters after trimming. Group names need not be unique. Existing memberships are loaded from Go, not directly from Firestore. Invitations, other members, balances, and group images are outside this milestone.
 
 For later device verification: create a group, restart the app, and confirm it remains listed. Sign in with a different account and confirm the first account's group is not visible. Check cancel, empty-name validation, optional descriptions, and backend/network errors in the dialog. A timed-out create may still have reached Go: close the dialog and refresh before submitting again.

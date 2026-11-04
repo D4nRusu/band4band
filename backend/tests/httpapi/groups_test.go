@@ -3,6 +3,7 @@ package httpapi_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -14,6 +15,7 @@ import (
 )
 
 type groupStoreStub struct {
+	remove func(context.Context, string, string) error
 	list   func(context.Context, string) ([]models.Group, error)
 	create func(context.Context, string, models.GroupInput) (models.Group, error)
 }
@@ -24,6 +26,10 @@ func (s groupStoreStub) ListForUser(ctx context.Context, uid string) ([]models.G
 
 func (s groupStoreStub) Create(ctx context.Context, uid string, input models.GroupInput) (models.Group, error) {
 	return s.create(ctx, uid, input)
+}
+
+func (s groupStoreStub) Delete(ctx context.Context, uid, groupID string) error {
+	return s.remove(ctx, uid, groupID)
 }
 
 func TestGroupsRequireAuthentication(t *testing.T) {
@@ -119,6 +125,63 @@ func TestGroupCreationValidatesClientInput(t *testing.T) {
 				if group.ID != "group-id" || len(group.MemberUIDs) != 1 || group.MemberUIDs[0] != "creator" {
 					t.Fatalf("unexpected group: %+v", group)
 				}
+			}
+		})
+	}
+}
+
+func TestDeleteGroupEndpoint(t *testing.T) {
+	for _, tc := range []struct {
+		name          string
+		authenticated bool
+		err           error
+		status        int
+	}{
+		{"owner", true, nil, 204},
+		{"non-owner", true, models.ErrGroupForbidden, 403},
+		{"missing", true, models.ErrGroupNotFound, 404},
+		{"invalid ID", true, models.ErrInvalidGroupID, 400},
+		{"database failure", true, errors.New("private details"), 500},
+		{"unauthenticated", false, nil, 401},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			verifier := verifierFunc(func(context.Context, string) (*auth.Token, error) {
+				return &auth.Token{UID: "verified-owner"}, nil
+			})
+
+			called := false
+			store := groupStoreStub{remove: func(_ context.Context, uid, groupID string) error {
+				called = true
+
+				if uid != "verified-owner" || groupID != "group-id" {
+					t.Fatalf("uid=%q groupID=%q", uid, groupID)
+				}
+
+				return tc.err
+			}}
+
+			r := httptest.NewRequest("DELETE", "/api/groups/group-id?uid=spoofed", nil)
+			if tc.authenticated {
+				r.Header.Set("Authorization", "Bearer token")
+			}
+
+			w := httptest.NewRecorder()
+			httpapi.NewRouter(verifier, nil, store).ServeHTTP(w, r)
+
+			if w.Code != tc.status {
+				t.Fatalf("status=%d body=%s", w.Code, w.Body.String())
+			}
+
+			if called != tc.authenticated {
+				t.Fatalf("store called=%v", called)
+			}
+
+			if tc.status == 204 && w.Body.Len() != 0 {
+				t.Fatal("204 response has a body")
+			}
+
+			if strings.Contains(w.Body.String(), "private details") {
+				t.Fatal("private error leaked")
 			}
 		})
 	}

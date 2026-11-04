@@ -46,6 +46,18 @@ export async function createGroup(
   return body;
 }
 
+export async function deleteGroup(user: AuthenticatedUser, groupID: string, signal?: AbortSignal): Promise<void> {
+  const response = await authenticatedRequest(user, `/api/groups/${encodeURIComponent(groupID)}`, {
+    method: 'DELETE',
+    signal,
+  });
+
+  // A stale list or a retried delete may refer to a group already removed.
+  if (response.status === 404) return;
+
+  await checkGroupResponse(response);
+}
+
 async function checkGroupResponse(response: Response): Promise<void> {
   if (response.status === 401) {
     throw new Error('Your session was rejected. Sign out and sign in again.');
@@ -55,8 +67,12 @@ async function checkGroupResponse(response: Response): Promise<void> {
     throw new Error('Use a name of 1–100 characters and a description of at most 1,000 characters.');
   }
 
+  if (response.status === 403) {
+    throw new Error('Only the group owner can delete this group.');
+  }
+
   if (!response.ok) {
-    throw new Error(`Could not load or create the group (HTTP ${response.status}).`);
+    throw new Error(`Could not complete the group operation (HTTP ${response.status}).`);
   }
 }
 

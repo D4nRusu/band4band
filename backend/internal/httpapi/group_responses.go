@@ -10,6 +10,27 @@ import (
 )
 
 func writeGroupError(w http.ResponseWriter, err error) {
+	if errors.Is(err, models.ErrGroupForbidden) {
+		writeGroupJSON(w, http.StatusForbidden, map[string]string{
+			"code":    "group_forbidden",
+			"message": models.ErrGroupForbidden.Error(),
+		})
+		return
+	}
+
+	if errors.Is(err, models.ErrGroupNotFound) {
+		writeGroupJSON(w, http.StatusNotFound, map[string]string{
+			"code":    "group_not_found",
+			"message": models.ErrGroupNotFound.Error(),
+		})
+		return
+	}
+
+	if errors.Is(err, models.ErrInvalidGroupID) {
+		writeGroupRequestError(w, err.Error())
+		return
+	}
+
 	if errors.Is(err, models.ErrInvalidGroupName) || errors.Is(err, models.ErrInvalidGroupDescription) {
 		writeGroupRequestError(w, err.Error())
 		return
@@ -18,7 +39,7 @@ func writeGroupError(w http.ResponseWriter, err error) {
 	log.Print("Group operation failed")
 	writeGroupJSON(w, http.StatusInternalServerError, map[string]string{
 		"code":    "groups_unavailable",
-		"message": "Could not load or create the group. Please retry.",
+		"message": "Could not complete the group operation. Please retry.",
 	})
 }
 

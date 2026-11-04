@@ -10,6 +10,9 @@ import (
 var (
 	ErrInvalidGroupName        = errors.New("group name must contain 1–100 characters")
 	ErrInvalidGroupDescription = errors.New("group description must contain at most 1000 characters")
+	ErrInvalidGroupID          = errors.New("invalid group ID")
+	ErrGroupNotFound           = errors.New("group not found")
+	ErrGroupForbidden          = errors.New("only the group owner can delete this group")
 )
 
 type GroupInput struct {
