@@ -30,5 +30,5 @@ func main() {
 	}
 
 	log.Println("Listening on :8080")
-	log.Fatal(http.ListenAndServe(":8080", httpapi.NewRouter(authClient)))
+	log.Fatal(http.ListenAndServe(":8080", httpapi.NewRouter(authClient, database.NewUserStore(db))))
 }

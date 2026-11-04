@@ -4,7 +4,7 @@ Android Google Sign-In uses an Expo development build, React Native Firebase, an
 
 ## Authentication flow
 
-Google Sign-In returns a Google ID token. `GoogleAuthProvider.credential` and `signInWithCredential` exchange it for a Firebase session. The API helper obtains a **Firebase ID token** using the Firebase user's `getIdToken()` and sends it as `Authorization: Bearer ...` to `GET /api/users/me`. Only the UID returned by Go is displayed as backend confirmation.
+Google Sign-In returns a Google ID token. `GoogleAuthProvider.credential` and `signInWithCredential` exchange it for a Firebase session. The API helper obtains a **Firebase ID token** using the Firebase user's `getIdToken()` and sends it as `Authorization: Bearer ...` to `GET /api/users/me`. The stored profile returned by Go is displayed as backend confirmation.
 
 Firebase's native SDK restores the session after restarting. No application code writes tokens to files, AsyncStorage, or logs. Sign-out clears the Firebase session and signs out of Google. The SDK refreshes Firebase tokens when needed. No Firestore SDK operations are used.
 
@@ -109,12 +109,13 @@ The generated Android **debug** manifest already allows cleartext HTTP for local
 
 ## Physical-device verification
 
-1. Tap Google Sign-In and choose an account. Confirm “Backend authentication confirmed” and the UID returned by Go.
+1. Tap Google Sign-In and choose an account. Confirm “Backend authentication confirmed” and the profile returned by Go. For a new profile, choose a username (3–30 letters, digits, or underscores; saved lowercase). A handle already owned by another user produces an inline “already taken” message. After saving, the form is replaced by the saved handle.
 2. Close/force-stop the app, reopen the same Metro project, and confirm it restores the session and checks Go without a new sign-in.
 3. Tap Sign out, restart again, and confirm the Google button returns.
 4. Cancel account selection; the app should return to idle without an error.
-5. Stop Go and tap Check backend again. Confirm a network error or timeout, restart Go, and retry.
-6. If Google reports a configuration error, verify the APK signing fingerprints, package name, Web client ID, and Firebase project before rebuilding.
+5. Confirm the Google photo (or default avatar), name, email, username, and joined date are displayed. Sign out and back in: the saved handle and joined date must not change. Use another account to try the same username with different capitalization; it must be rejected.
+6. Stop Go and tap Check backend again. Confirm a network error or timeout, restart Go, and retry.
+7. If Google reports a configuration error, verify the APK signing fingerprints, package name, Web client ID, and Firebase project before rebuilding.
 
 A Firebase sign-in alone is not backend confirmation. A backend 401 generally means the Firebase token/project does not match the Go verification configuration. Check that mobile and backend use the same Firebase project.
 
@@ -127,7 +128,7 @@ npm run lint
 npx expo config --type public
 ```
 
-Tests live in `tests/` and use Node's built-in test runner with native TypeScript stripping, without a new test framework. They check the Firebase token Authorization header, endpoint, configuration validation, production HTTP rejection, 401 handling, and invalid backend responses. A harmless Node module-type detection warning can appear when importing the Expo TypeScript helper directly.
+Tests live in `tests/` and use Node's built-in test runner with native TypeScript stripping, without a new test framework. They check the Firebase token Authorization header, endpoint, configuration validation, production HTTP rejection, 401 handling, invalid backend responses, profile submission, and username-conflict feedback. A harmless Node module-type detection warning can appear when importing the Expo TypeScript helper directly.
 
 Android prebuild can be checked with `npx expo prebuild --platform android --no-install`; it generates ignored native directories. Do not edit those directories by hand. Full cross-platform introspection requires iOS Firebase configuration, which is not supplied here.
 

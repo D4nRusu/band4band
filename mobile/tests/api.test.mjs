@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import { afterEach, test } from 'node:test';
 
-import { getCurrentUser } from '../src/lib/api.ts';
+import { getCurrentUser, completeProfile } from '../src/lib/api.ts';
+
+const profile = { uid: 'verified-uid', email: 'user@example.test', name: 'Example User', username: '', photoURL: '', createdAt: '2026-11-04T12:00:00Z', profileComplete: false };
 
 const originalFetch = globalThis.fetch;
 const originalUrl = process.env.EXPO_PUBLIC_API_BASE_URL;
@@ -23,9 +25,9 @@ test('sends the Firebase user token to the protected Go endpoint', async () => {
     assert.equal(options.headers.Authorization, 'Bearer mock-firebase-token');
     assert.equal(options.signal, controller.signal);
     assert.equal(options.redirect, 'error');
-    return Response.json({ uid: 'verified-uid' });
+    return Response.json(profile);
   };
-  assert.equal(await getCurrentUser(user, controller.signal), 'verified-uid');
+  assert.deepEqual(await getCurrentUser(user, controller.signal), profile);
 });
 
 test('rejects missing configuration before requesting a token', async () => {
@@ -47,8 +49,43 @@ test('reports unauthorized responses without reflecting backend content', async 
 
 test('rejects invalid backend user responses', async () => {
   process.env.EXPO_PUBLIC_API_BASE_URL = 'https://api.example.test';
-  for (const body of [null, {}, { uid: 123 }, { uid: '' }]) {
+  for (const body of [null, {}, { uid: 123 }, { uid: '' },
+    { ...profile, createdAt: 'invalid' }, { ...profile, profileComplete: true },
+    { ...profile, username: 'alice', profileComplete: false },
+    { ...profile, email: null }, { ...profile, photoURL: 123 }]) {
     globalThis.fetch = async () => Response.json(body);
     await assert.rejects(getCurrentUser({ getIdToken: async () => 'mock-firebase-token' }), /invalid user response/);
   }
+});
+
+test('submits only the username with a Firebase token and returns the completed profile', async () => {
+  process.env.EXPO_PUBLIC_API_BASE_URL = 'http://127.0.0.1:8080';
+  const completed = { ...profile, username: 'alice_123', profileComplete: true };
+  globalThis.fetch = async (url, options) => {
+    assert.equal(url, 'http://127.0.0.1:8080/api/users/me/username');
+    assert.equal(options.method, 'PUT');
+    assert.equal(options.headers.Authorization, 'Bearer mock-firebase-token');
+    assert.equal(options.headers['Content-Type'], 'application/json');
+    assert.deepEqual(JSON.parse(options.body), { username: 'Alice_123' });
+    return Response.json(completed);
+  };
+  assert.deepEqual(await completeProfile({ getIdToken: async () => 'mock-firebase-token' }, 'Alice_123'), completed);
+});
+
+test('gives actionable feedback when another user has claimed a username', async () => {
+  process.env.EXPO_PUBLIC_API_BASE_URL = 'https://api.example.test';
+  globalThis.fetch = async () => Response.json({ code: 'username_taken', message: 'untrusted details' }, { status: 409 });
+  await assert.rejects(completeProfile({ getIdToken: async () => 'mock-firebase-token' }, 'alice'), /already taken.*choose another/);
+});
+
+test('preserves the distinction between username conflicts and completed profiles', async () => {
+  process.env.EXPO_PUBLIC_API_BASE_URL = 'https://api.example.test';
+  globalThis.fetch = async () => Response.json({ code: 'profile_complete' }, { status: 409 });
+  await assert.rejects(completeProfile({ getIdToken: async () => 'mock-firebase-token' }, 'other'), /already has a username/);
+});
+
+test('reports backend username validation failures', async () => {
+  process.env.EXPO_PUBLIC_API_BASE_URL = 'https://api.example.test';
+  globalThis.fetch = async () => Response.json({ code: 'invalid_username' }, { status: 400 });
+  await assert.rejects(completeProfile({ getIdToken: async () => 'mock-firebase-token' }, 'bad name'), /3–30/);
 });

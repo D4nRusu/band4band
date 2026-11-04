@@ -11,6 +11,7 @@ import (
 	"firebase.google.com/go/v4/auth"
 
 	"github.com/D4nRusu/band4band/backend/internal/httpapi"
+	"github.com/D4nRusu/band4band/backend/internal/models"
 )
 
 type verifierFunc func(context.Context, string) (*auth.Token, error)
@@ -126,16 +127,20 @@ func TestRoutes(t *testing.T) {
 				r.Header.Set("Authorization", tc.header)
 			}
 			w := httptest.NewRecorder()
-			httpapi.NewRouter(verifier).ServeHTTP(w, r)
+			httpapi.NewRouter(verifier, userStoreStub{
+				get: func(_ context.Context, identity models.Identity) (models.User, error) {
+					return models.User{UID: identity.UID}, nil
+				},
+			}).ServeHTTP(w, r)
 			if w.Code != tc.status {
 				t.Fatalf("status = %d, want %d", w.Code, tc.status)
 			}
 			if tc.status == http.StatusOK {
-				var body map[string]string
+				var body map[string]any
 				if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
 					t.Fatal(err)
 				}
-				if w.Header().Get("Content-Type") != "application/json" || len(body) != 1 || body[tc.key] != tc.value {
+				if w.Header().Get("Content-Type") != "application/json" || body[tc.key] != tc.value {
 					t.Fatalf("unexpected response: headers=%v body=%v", w.Header(), body)
 				}
 			}
