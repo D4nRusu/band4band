@@ -10,9 +10,10 @@ type GroupSettingsModalProps = {
   user: AuthenticatedUser & { uid: string };
   group: Group;
   onClose: () => void;
+  onEdit: () => void;
 };
 
-export function GroupSettingsModal({ user, group, onClose }: GroupSettingsModalProps) {
+export function GroupSettingsModal({ user, group, onClose, onEdit }: GroupSettingsModalProps) {
   const theme = useTheme();
   const isOwner = group.createdBy === user.uid;
   const { working, error, exitGroup } = useExitGroup(user, group, isOwner);
@@ -39,6 +40,8 @@ export function GroupSettingsModal({ user, group, onClose }: GroupSettingsModalP
       <View style={styles.overlay}>
         <View style={[styles.dialog, { backgroundColor: theme.background }]} accessibilityViewIsModal>
           <ThemedText type="subtitle" accessibilityRole="header">Group settings</ThemedText>
+
+          <Button title="Edit group" disabled={working} onPress={onEdit} />
 
           <Pressable onPress={confirmExit} disabled={working} accessibilityRole="button"
             accessibilityLabel={actionLabel} accessibilityState={{ disabled: working }} style={styles.action}>

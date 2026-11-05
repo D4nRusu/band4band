@@ -103,6 +103,30 @@ export async function createGroup(
   return body;
 }
 
+export async function updateGroup(
+  user: AuthenticatedUser,
+  groupID: string,
+  input: GroupInput,
+  signal?: AbortSignal,
+): Promise<Group> {
+  const response = await authenticatedRequest(user, `/api/groups/${encodeURIComponent(groupID)}`, {
+    method: 'PUT',
+    body: JSON.stringify(input),
+    signal,
+  });
+
+  if (response.status === 403 || response.status === 404) {
+    await checkGroupDetailsResponse(response);
+  }
+
+  await checkGroupResponse(response);
+
+  const body: unknown = await response.json();
+  if (!isGroup(body)) throw new Error('The backend returned an invalid group.');
+
+  return body;
+}
+
 export async function deleteGroup(user: AuthenticatedUser, groupID: string, signal?: AbortSignal): Promise<void> {
   const response = await authenticatedRequest(user, `/api/groups/${encodeURIComponent(groupID)}`, {
     method: 'DELETE',

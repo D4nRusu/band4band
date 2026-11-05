@@ -15,6 +15,7 @@ import (
 )
 
 type groupStoreStub struct {
+	update  func(context.Context, string, string, models.GroupInput) (models.Group, error)
 	details func(context.Context, string, string) (models.Group, error)
 	members func(context.Context, string, string) ([]models.GroupMember, error)
 	leave   func(context.Context, string, string) error
@@ -200,4 +201,8 @@ func (s groupStoreStub) Details(ctx context.Context, uid, groupID string) (model
 
 func (s groupStoreStub) Members(ctx context.Context, uid, groupID string) ([]models.GroupMember, error) {
 	return s.members(ctx, uid, groupID)
+}
+
+func (s groupStoreStub) Update(ctx context.Context, uid, id string, input models.GroupInput) (models.Group, error) {
+	return s.update(ctx, uid, id, input)
 }

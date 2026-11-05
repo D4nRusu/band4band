@@ -56,5 +56,12 @@ export function useGroupDetails(user: AuthenticatedUser, groupID: string) {
     return () => cancelLoad.current?.();
   }, [reload]));
 
-  return { group, loading, error, reload };
+  function applyUpdate(updated: Group) {
+    cancelLoad.current?.();
+    setGroup(updated);
+    setLoading(false);
+    setError(null);
+  }
+
+  return { group, loading, error, reload, applyUpdate };
 }

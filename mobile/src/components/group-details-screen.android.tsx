@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { ActivityIndicator, Button, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { EditGroupModal } from '@/components/edit-group-modal';
 import { GroupBanner } from '@/components/group-banner';
 import { GroupMembersModal } from '@/components/group-members-modal';
 import { GroupSettingsModal } from '@/components/group-settings-modal';
@@ -12,6 +13,7 @@ import { useAuthSession } from '@/hooks/use-auth-session.android';
 import { useGroupDetails } from '@/hooks/use-group-details';
 import { useTheme } from '@/hooks/use-theme';
 import type { AuthenticatedUser } from '@/lib/api';
+import type { Group } from '@/lib/groups-api';
 
 function backToGroups() {
   if (router.canGoBack()) router.back();
@@ -50,11 +52,16 @@ export default function GroupDetailsScreen() {
 }
 
 function GroupDetails({ user, groupID }: { user: AuthenticatedUser & { uid: string }; groupID: string }) {
-  const { group, loading, error, reload } = useGroupDetails(user, groupID);
-  const [menu, setMenu] = useState<'members' | 'invite' | 'settings' | null>(null);
+  const { group, loading, error, reload, applyUpdate } = useGroupDetails(user, groupID);
+  const [menu, setMenu] = useState<'members' | 'invite' | 'settings' | 'edit' | null>(null);
 
   function closeMenu() {
     setMenu(null);
+  }
+
+  function savedGroup(updated: Group) {
+    applyUpdate(updated);
+    setMenu('settings');
   }
 
   return (
@@ -91,8 +98,12 @@ function GroupDetails({ user, groupID }: { user: AuthenticatedUser & { uid: stri
         <InviteUserModal user={user} group={group} onClose={() => setMenu('members')} />
       )}
 
+      {group && menu === 'edit' && (
+        <EditGroupModal user={user} group={group} onSaved={savedGroup} onClose={() => setMenu('settings')} />
+      )}
+
       {group && menu === 'settings' && (
-        <GroupSettingsModal user={user} group={group} onClose={closeMenu} />
+        <GroupSettingsModal user={user} group={group} onClose={closeMenu} onEdit={() => setMenu('edit')} />
       )}
     </>
   );

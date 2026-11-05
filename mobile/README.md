@@ -159,3 +159,7 @@ References: [Expo Firebase](https://docs.expo.dev/guides/using-firebase/), [Goog
 Tap a group's name or description to open its page within the Groups tab. The banner uses a local placeholder image. Tap **X people** to see member photos, names, and emails; close the popup or use Android Back to return. Pull down on the group page to refresh its details and member count. Member information is fetched through Go when the popup opens and is restricted to current group members.
 
 Restart Go and reload Metro to use these routes; no new APK is needed. Physical-device UI and Firestore runtime verification remain deferred.
+
+### Editing groups
+
+Open a group's gear icon, then **Edit group**. Any current member can change the name and description. Save changes returns to settings and updates the group page. The image button is a disabled placeholder; image uploads are not available yet. Restart Go for the new update endpoint and reload Metro; no APK rebuild is required.

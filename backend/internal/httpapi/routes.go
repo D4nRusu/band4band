@@ -20,6 +20,7 @@ func NewRouter(verifier TokenVerifier, users UserStore, groups GroupStore, invit
 	mux.Handle("POST /api/groups", Authenticate(verifier, http.HandlerFunc(groupsHandler.createGroup)))
 	mux.Handle("GET /api/groups/{groupID}", Authenticate(verifier, http.HandlerFunc(groupsHandler.details)))
 	mux.Handle("GET /api/groups/{groupID}/members", Authenticate(verifier, http.HandlerFunc(groupsHandler.members)))
+	mux.Handle("PUT /api/groups/{groupID}", Authenticate(verifier, http.HandlerFunc(groupsHandler.updateGroup)))
 	mux.Handle("DELETE /api/groups/{groupID}", Authenticate(verifier, http.HandlerFunc(groupsHandler.deleteGroup)))
 	mux.Handle("POST /api/groups/{groupID}/leave", Authenticate(verifier, http.HandlerFunc(groupsHandler.leaveGroup)))
 
