@@ -14,6 +14,61 @@ export interface GroupInput {
   description: string;
 }
 
+export interface GroupMember {
+  uid: string;
+  name: string;
+  email: string;
+  username: string;
+  photoURL: string;
+}
+
+export async function getGroup(user: AuthenticatedUser, groupID: string, signal?: AbortSignal): Promise<Group> {
+  const response = await authenticatedRequest(user, `/api/groups/${encodeURIComponent(groupID)}`, { signal });
+  await checkGroupDetailsResponse(response);
+
+  const body: unknown = await response.json();
+  if (!isGroup(body)) throw new Error('The backend returned an invalid group.');
+
+  return body;
+}
+
+export async function getGroupMembers(
+  user: AuthenticatedUser,
+  groupID: string,
+  signal?: AbortSignal,
+): Promise<GroupMember[]> {
+  const response = await authenticatedRequest(user, `/api/groups/${encodeURIComponent(groupID)}/members`, { signal });
+  await checkGroupDetailsResponse(response);
+
+  const body: unknown = await response.json();
+  if (!Array.isArray(body) || !body.every(isGroupMember)) {
+    throw new Error('The backend returned an invalid member list.');
+  }
+
+  return body;
+}
+
+async function checkGroupDetailsResponse(response: Response): Promise<void> {
+  if (response.status === 403) throw new Error('You are no longer a member of this group.');
+
+  if (response.status === 404) throw new Error('This group no longer exists.');
+
+  if (response.status === 400) throw new Error('This group link is invalid.');
+
+  await checkGroupResponse(response);
+}
+
+function isGroupMember(value: unknown): value is GroupMember {
+  if (!value || typeof value !== 'object') return false;
+
+  const member = value as Record<string, unknown>;
+  return typeof member.uid === 'string' && member.uid.length > 0
+    && typeof member.name === 'string'
+    && typeof member.email === 'string'
+    && typeof member.username === 'string'
+    && typeof member.photoURL === 'string';
+}
+
 export async function getGroups(user: AuthenticatedUser, signal?: AbortSignal): Promise<Group[]> {
   const response = await authenticatedRequest(user, '/api/groups', { signal });
   await checkGroupResponse(response);

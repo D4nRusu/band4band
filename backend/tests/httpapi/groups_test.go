@@ -15,10 +15,12 @@ import (
 )
 
 type groupStoreStub struct {
-	leave  func(context.Context, string, string) error
-	remove func(context.Context, string, string) error
-	list   func(context.Context, string) ([]models.Group, error)
-	create func(context.Context, string, models.GroupInput) (models.Group, error)
+	details func(context.Context, string, string) (models.Group, error)
+	members func(context.Context, string, string) ([]models.GroupMember, error)
+	leave   func(context.Context, string, string) error
+	remove  func(context.Context, string, string) error
+	list    func(context.Context, string) ([]models.Group, error)
+	create  func(context.Context, string, models.GroupInput) (models.Group, error)
 }
 
 func (s groupStoreStub) ListForUser(ctx context.Context, uid string) ([]models.Group, error) {
@@ -190,4 +192,12 @@ func TestDeleteGroupEndpoint(t *testing.T) {
 			}
 		})
 	}
+}
+
+func (s groupStoreStub) Details(ctx context.Context, uid, groupID string) (models.Group, error) {
+	return s.details(ctx, uid, groupID)
+}
+
+func (s groupStoreStub) Members(ctx context.Context, uid, groupID string) ([]models.GroupMember, error) {
+	return s.members(ctx, uid, groupID)
 }

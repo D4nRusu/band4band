@@ -10,6 +10,14 @@ import (
 )
 
 func writeGroupError(w http.ResponseWriter, err error) {
+	if errors.Is(err, models.ErrGroupAccessForbidden) {
+		writeGroupJSON(w, http.StatusForbidden, map[string]string{
+			"code":    "group_access_forbidden",
+			"message": models.ErrGroupAccessForbidden.Error(),
+		})
+		return
+	}
+
 	if errors.Is(err, models.ErrGroupMembershipRequired) || errors.Is(err, models.ErrOwnerCannotLeave) {
 		writeGroupJSON(w, http.StatusForbidden, map[string]string{
 			"code":    "group_membership_forbidden",

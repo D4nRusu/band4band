@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Button, FlatList, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -54,6 +55,10 @@ function UserGroups({ user }: { user: AuthenticatedUser & { uid: string } }) {
     inbox.reload();
   }
 
+  function openGroup(group: Group) {
+    router.push({ pathname: '/groups/[groupID]', params: { groupID: group.id } });
+  }
+
   return (
     <>
       <Button title="Create a new group" disabled={busy} onPress={openCreate} />
@@ -91,6 +96,7 @@ function UserGroups({ user }: { user: AuthenticatedUser & { uid: string } }) {
             onDelete={removeGroup}
             onLeave={leave}
             onInvite={setInviteGroup}
+            onOpen={openGroup}
           />
         )}
       />

@@ -1,4 +1,4 @@
-import { Alert, Button, StyleSheet, View } from 'react-native';
+import { Alert, Button, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
@@ -12,9 +12,10 @@ type GroupCardProps = {
   onDelete: (groupID: string) => Promise<void>;
   onLeave: (groupID: string) => Promise<void>;
   onInvite: (group: Group) => void;
+  onOpen: (group: Group) => void;
 };
 
-export function GroupCard({ group, currentUID, disabled, removing, onDelete, onLeave, onInvite }: GroupCardProps) {
+export function GroupCard({ group, currentUID, disabled, removing, onDelete, onLeave, onInvite, onOpen }: GroupCardProps) {
   const theme = useTheme();
   const isOwner = group.createdBy === currentUID;
 
@@ -40,8 +41,11 @@ export function GroupCard({ group, currentUID, disabled, removing, onDelete, onL
 
   return (
     <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
-      <ThemedText type="subtitle">{group.name}</ThemedText>
-      {group.description !== '' && <ThemedText>{group.description}</ThemedText>}
+      <Pressable onPress={() => onOpen(group)} disabled={disabled} accessibilityRole="link"
+        accessibilityLabel={`Open group ${group.name}`} style={styles.summary}>
+        <ThemedText type="subtitle">{group.name}</ThemedText>
+        {group.description !== '' && <ThemedText>{group.description}</ThemedText>}
+      </Pressable>
 
       <Button title="Invite user" disabled={disabled} onPress={() => onInvite(group)} />
       <Button title={actionLabel} disabled={disabled} onPress={confirmExit} />
@@ -50,5 +54,6 @@ export function GroupCard({ group, currentUID, disabled, removing, onDelete, onL
 }
 
 const styles = StyleSheet.create({
+  summary: { gap: 8, paddingVertical: 8 },
   card: { padding: 20, borderRadius: 12, gap: 8 },
 });

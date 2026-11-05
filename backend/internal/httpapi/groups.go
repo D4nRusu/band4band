@@ -14,6 +14,8 @@ type GroupStore interface {
 	Create(context.Context, string, models.GroupInput) (models.Group, error)
 	Delete(context.Context, string, string) error
 	Leave(context.Context, string, string) error
+	Details(context.Context, string, string) (models.Group, error)
+	Members(context.Context, string, string) ([]models.GroupMember, error)
 }
 
 type groupHandler struct {

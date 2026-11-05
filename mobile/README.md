@@ -153,3 +153,9 @@ Tests live in `tests/` and use Node's built-in test runner with native TypeScrip
 Android prebuild can be checked with `npx expo prebuild --platform android --no-install`; it generates ignored native directories. Do not edit those directories by hand. Full cross-platform introspection requires iOS Firebase configuration, which is not supplied here.
 
 References: [Expo Firebase](https://docs.expo.dev/guides/using-firebase/), [Google Sign-In Expo setup](https://react-native-google-signin.github.io/docs/setting-up/expo), [APK builds and installation](https://docs.expo.dev/build-reference/apk/), [development client usage](https://docs.expo.dev/develop/development-builds/use-development-builds/).
+
+### Group pages
+
+Tap a group's name or description to open its page within the Groups tab. The banner uses a local placeholder image. Tap **X people** to see member photos, names, and emails; close the popup or use Android Back to return. Pull down on the group page to refresh its details and member count. Member information is fetched through Go when the popup opens and is restricted to current group members.
+
+Restart Go and reload Metro to use these routes; no new APK is needed. Physical-device UI and Firestore runtime verification remain deferred.

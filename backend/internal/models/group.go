@@ -15,11 +15,20 @@ var (
 	ErrGroupForbidden          = errors.New("only the group owner can delete this group")
 	ErrGroupMembershipRequired = errors.New("you must be a group member to invite people")
 	ErrOwnerCannotLeave        = errors.New("the owner cannot leave; delete the group instead")
+	ErrGroupAccessForbidden    = errors.New("you must be a group member to view this group")
 )
 
 type GroupInput struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
+}
+
+type GroupMember struct {
+	UID      string `json:"uid"`
+	Name     string `json:"name"`
+	Email    string `json:"email"`
+	Username string `json:"username"`
+	PhotoURL string `json:"photoURL"`
 }
 
 func (input GroupInput) Normalize() (GroupInput, error) {
