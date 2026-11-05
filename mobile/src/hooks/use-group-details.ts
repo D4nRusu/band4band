@@ -1,8 +1,8 @@
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 
 import type { AuthenticatedUser } from '@/lib/api';
-import { getGroup, type Group } from '@/lib/groups-api';
+import { getGroup, GroupUnavailableError, type Group } from '@/lib/groups-api';
 
 export function useGroupDetails(user: AuthenticatedUser, groupID: string) {
   const [group, setGroup] = useState<Group | null>(null);
@@ -31,6 +31,12 @@ export function useGroupDetails(user: AuthenticatedUser, groupID: string) {
         if (controller.signal.aborted) return;
 
         setGroup(null);
+
+        if (cause instanceof GroupUnavailableError) {
+          router.dismissTo('/groups');
+          return;
+        }
+
         setError(cause instanceof Error ? cause.message : 'Could not load this group.');
       })
       .finally(() => {

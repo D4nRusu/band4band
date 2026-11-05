@@ -22,6 +22,8 @@ export interface GroupMember {
   photoURL: string;
 }
 
+export class GroupUnavailableError extends Error {}
+
 export async function getGroup(user: AuthenticatedUser, groupID: string, signal?: AbortSignal): Promise<Group> {
   const response = await authenticatedRequest(user, `/api/groups/${encodeURIComponent(groupID)}`, { signal });
   await checkGroupDetailsResponse(response);
@@ -49,9 +51,9 @@ export async function getGroupMembers(
 }
 
 async function checkGroupDetailsResponse(response: Response): Promise<void> {
-  if (response.status === 403) throw new Error('You are no longer a member of this group.');
+  if (response.status === 403) throw new GroupUnavailableError('You are no longer a member of this group.');
 
-  if (response.status === 404) throw new Error('This group no longer exists.');
+  if (response.status === 404) throw new GroupUnavailableError('This group no longer exists.');
 
   if (response.status === 400) throw new Error('This group link is invalid.');
 

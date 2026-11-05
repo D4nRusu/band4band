@@ -1,4 +1,4 @@
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { AuthenticatedUser } from '@/lib/api';
@@ -130,6 +130,8 @@ export function useGroups(user: AuthenticatedUser) {
       if (controller.signal.aborted) return;
 
       setGroups((previous) => previous.filter((group) => group.id !== groupID));
+
+      router.dismissTo('/groups');
     } catch (cause) {
       if (removeRequest.current !== controller) return;
 
