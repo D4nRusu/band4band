@@ -1,8 +1,8 @@
-import { router, useFocusEffect } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { AuthenticatedUser } from '@/lib/api';
-import { createGroup, deleteGroup, getGroups, leaveGroup, type Group, type GroupInput } from '@/lib/groups-api';
+import { createGroup, getGroups, type Group, type GroupInput } from '@/lib/groups-api';
 
 export function useGroups(user: AuthenticatedUser) {
   const [groups, setGroups] = useState<Group[]>([]);
@@ -10,23 +10,17 @@ export function useGroups(user: AuthenticatedUser) {
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
-  const [removingID, setRemovingID] = useState<string | null>(null);
   const createRequest = useRef<AbortController | null>(null);
-  const removeRequest = useRef<AbortController | null>(null);
   const cancelLoad = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     return () => {
       createRequest.current?.abort();
       createRequest.current = null;
-      removeRequest.current?.abort();
-      removeRequest.current = null;
     };
   }, []);
 
   const reload = useCallback(() => {
-    if (removeRequest.current) return;
-
     cancelLoad.current?.();
 
     const controller = new AbortController();
@@ -66,7 +60,7 @@ export function useGroups(user: AuthenticatedUser) {
   }, [reload]));
 
   async function submitGroup(input: GroupInput): Promise<boolean> {
-    if (createRequest.current || removeRequest.current) return false;
+    if (createRequest.current) return false;
 
     const controller = new AbortController();
     createRequest.current = controller;
@@ -108,62 +102,8 @@ export function useGroups(user: AuthenticatedUser) {
     setCreateError(null);
   }
 
-  async function removeGroupFromList(groupID: string, action: 'delete' | 'leave'): Promise<void> {
-    if (removeRequest.current || createRequest.current) return;
-
-    const controller = new AbortController();
-    removeRequest.current = controller;
-    cancelLoad.current?.();
-    setLoading(false);
-    setRemovingID(groupID);
-    setError(null);
-
-    const timeout = setTimeout(() => controller.abort(), 15000);
-
-    try {
-      if (action === 'delete') {
-        await deleteGroup(user, groupID, controller.signal);
-      } else {
-        await leaveGroup(user, groupID, controller.signal);
-      }
-
-      if (controller.signal.aborted) return;
-
-      setGroups((previous) => previous.filter((group) => group.id !== groupID));
-
-      router.dismissTo('/groups');
-    } catch (cause) {
-      if (removeRequest.current !== controller) return;
-
-      let message = action === 'delete' ? 'Could not delete your group.' : 'Could not leave this group.';
-
-      if (controller.signal.aborted) {
-        message = 'The change could not be confirmed. Refresh your groups before trying again.';
-      } else if (cause instanceof Error) {
-        message = cause.message;
-      }
-
-      setError(message);
-    } finally {
-      clearTimeout(timeout);
-
-      if (removeRequest.current === controller) {
-        removeRequest.current = null;
-        setRemovingID(null);
-      }
-    }
-  }
-
-  function removeGroup(groupID: string) {
-    return removeGroupFromList(groupID, 'delete');
-  }
-
-  function leave(groupID: string) {
-    return removeGroupFromList(groupID, 'leave');
-  }
-
   return {
-    groups, loading, error, creating, createError, removingID,
-    submitGroup, removeGroup, leave, reload, clearCreateError,
+    groups, loading, error, creating, createError,
+    submitGroup, reload, clearCreateError,
   };
 }

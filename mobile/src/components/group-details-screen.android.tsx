@@ -5,6 +5,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { GroupBanner } from '@/components/group-banner';
 import { GroupMembersModal } from '@/components/group-members-modal';
+import { GroupSettingsModal } from '@/components/group-settings-modal';
+import { InviteUserModal } from '@/components/invite-user-modal';
 import { ThemedText } from '@/components/themed-text';
 import { useAuthSession } from '@/hooks/use-auth-session.android';
 import { useGroupDetails } from '@/hooks/use-group-details';
@@ -47,16 +49,21 @@ export default function GroupDetailsScreen() {
   );
 }
 
-function GroupDetails({ user, groupID }: { user: AuthenticatedUser; groupID: string }) {
+function GroupDetails({ user, groupID }: { user: AuthenticatedUser & { uid: string }; groupID: string }) {
   const { group, loading, error, reload } = useGroupDetails(user, groupID);
-  const [showMembers, setShowMembers] = useState(false);
+  const [menu, setMenu] = useState<'members' | 'invite' | 'settings' | null>(null);
+
+  function closeMenu() {
+    setMenu(null);
+  }
 
   return (
     <>
       <ScrollView refreshControl={<RefreshControl refreshing={loading} onRefresh={reload} />}>
         {group && (
           <>
-            <GroupBanner group={group} onBack={backToGroups} onPeoplePress={() => setShowMembers(true)} />
+            <GroupBanner group={group} onBack={backToGroups}
+              onPeoplePress={() => setMenu('members')} onSettingsPress={() => setMenu('settings')} />
             {group.description !== '' && <ThemedText style={styles.description}>{group.description}</ThemedText>}
           </>
         )}
@@ -76,8 +83,16 @@ function GroupDetails({ user, groupID }: { user: AuthenticatedUser; groupID: str
         )}
       </ScrollView>
 
-      {group && showMembers && (
-        <GroupMembersModal user={user} group={group} onClose={() => setShowMembers(false)} />
+      {group && menu === 'members' && (
+        <GroupMembersModal user={user} group={group} onClose={closeMenu} onInvite={() => setMenu('invite')} />
+      )}
+
+      {group && menu === 'invite' && (
+        <InviteUserModal user={user} group={group} onClose={() => setMenu('members')} />
+      )}
+
+      {group && menu === 'settings' && (
+        <GroupSettingsModal user={user} group={group} onClose={closeMenu} />
       )}
     </>
   );

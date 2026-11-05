@@ -5,7 +5,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CreateGroupModal } from '@/components/create-group-modal';
 import { GroupInvitations } from '@/components/group-invitations';
-import { InviteUserModal } from '@/components/invite-user-modal';
 import { GroupCard } from '@/components/group-card';
 import { ThemedText } from '@/components/themed-text';
 import { useAuthSession } from '@/hooks/use-auth-session.android';
@@ -32,13 +31,12 @@ export default function GroupsScreen() {
 
 function UserGroups({ user }: { user: AuthenticatedUser & { uid: string } }) {
   const {
-    groups, loading, error, creating, createError, removingID,
-    submitGroup, removeGroup, leave, reload, clearCreateError,
+    groups, loading, error, creating, createError,
+    submitGroup, reload, clearCreateError,
   } = useGroups(user);
   const inbox = useGroupInvitations(user, reload);
   const [showCreate, setShowCreate] = useState(false);
-  const [inviteGroup, setInviteGroup] = useState<Group | null>(null);
-  const busy = loading || creating || removingID !== null || inbox.respondingID !== null;
+  const busy = loading || creating || inbox.respondingID !== null;
 
   function openCreate() {
     clearCreateError();
@@ -90,12 +88,7 @@ function UserGroups({ user }: { user: AuthenticatedUser & { uid: string } }) {
         renderItem={({ item }) => (
           <GroupCard
             group={item}
-            currentUID={user.uid}
             disabled={busy}
-            removing={removingID === item.id}
-            onDelete={removeGroup}
-            onLeave={leave}
-            onInvite={setInviteGroup}
             onOpen={openGroup}
           />
         )}
@@ -103,10 +96,6 @@ function UserGroups({ user }: { user: AuthenticatedUser & { uid: string } }) {
 
       {showCreate && (
         <CreateGroupModal creating={creating} error={createError} onCreate={submitGroup} onClose={closeCreate} />
-      )}
-
-      {inviteGroup && (
-        <InviteUserModal user={user} group={inviteGroup} onClose={() => setInviteGroup(null)} />
       )}
     </>
   );
