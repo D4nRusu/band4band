@@ -35,11 +35,7 @@ export function GroupCard({ group, disabled, onOpen }: GroupCardProps) {
 
       <View style={styles.details}>
         <ThemedText type="subtitle" style={styles.name} numberOfLines={2}>{group.name}</ThemedText>
-        {group.description !== '' && (
-          <ThemedText type="small" themeColor="textSecondary" numberOfLines={2}>
-            {group.description}
-          </ThemedText>
-        )}
+        <ThemedText type="body" style={styles.details} numberOfLines={2}>You are settled up in this group!</ThemedText>
       </View>
     </Pressable>
   );
