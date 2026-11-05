@@ -30,6 +30,11 @@ func main() {
 	}
 
 	log.Println("Listening on :8080")
-	router := httpapi.NewRouter(authClient, database.NewUserStore(db), database.NewGroupStore(db))
+	router := httpapi.NewRouter(
+		authClient,
+		database.NewUserStore(db),
+		database.NewGroupStore(db),
+		database.NewInvitationStore(db),
+	)
 	log.Fatal(http.ListenAndServe(":8080", router))
 }

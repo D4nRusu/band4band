@@ -76,6 +76,21 @@ async function checkGroupResponse(response: Response): Promise<void> {
   }
 }
 
+export async function leaveGroup(user: AuthenticatedUser, groupID: string, signal?: AbortSignal): Promise<void> {
+  const response = await authenticatedRequest(user, `/api/groups/${encodeURIComponent(groupID)}/leave`, {
+    method: 'POST',
+    signal,
+  });
+
+  if (response.status === 404) return;
+
+  if (response.status === 403) {
+    throw new Error('The owner cannot leave the group. Delete it instead.');
+  }
+
+  await checkGroupResponse(response);
+}
+
 function isGroup(value: unknown): value is Group {
   if (!value || typeof value !== 'object') return false;
 

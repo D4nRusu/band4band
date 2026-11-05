@@ -4,11 +4,8 @@ import (
 	"context"
 	"fmt"
 	"sort"
-	"strings"
 
 	"cloud.google.com/go/firestore"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
 	"github.com/D4nRusu/band4band/backend/internal/models"
 )
@@ -96,7 +93,7 @@ func (s *GroupStore) Delete(ctx context.Context, uid, groupID string) error {
 		return fmt.Errorf("missing authenticated UID")
 	}
 
-	if groupID == "" || len(groupID) > 1500 || strings.Contains(groupID, "/") || groupID == "." || groupID == ".." {
+	if !validDocumentID(groupID) {
 		return models.ErrInvalidGroupID
 	}
 
@@ -104,22 +101,19 @@ func (s *GroupStore) Delete(ctx context.Context, uid, groupID string) error {
 
 	// Check ownership and delete the membership-bearing document atomically.
 	return s.db.RunTransaction(ctx, func(ctx context.Context, tx *firestore.Transaction) error {
-		snapshot, err := tx.Get(ref)
-		if status.Code(err) == codes.NotFound {
-			return models.ErrGroupNotFound
-		}
-
+		group, err := readGroup(tx, ref)
 		if err != nil {
-			return err
-		}
-
-		var group models.Group
-		if err := snapshot.DataTo(&group); err != nil {
 			return err
 		}
 
 		if group.CreatedBy != uid {
 			return models.ErrGroupForbidden
+		}
+
+		for _, invitationID := range group.PendingInvitations {
+			if err := tx.Delete(s.db.Collection("groupInvitations").Doc(invitationID)); err != nil {
+				return err
+			}
 		}
 
 		return tx.Delete(ref)

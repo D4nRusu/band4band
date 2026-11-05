@@ -15,6 +15,7 @@ import (
 )
 
 type groupStoreStub struct {
+	leave  func(context.Context, string, string) error
 	remove func(context.Context, string, string) error
 	list   func(context.Context, string) ([]models.Group, error)
 	create func(context.Context, string, models.GroupInput) (models.Group, error)
@@ -32,6 +33,10 @@ func (s groupStoreStub) Delete(ctx context.Context, uid, groupID string) error {
 	return s.remove(ctx, uid, groupID)
 }
 
+func (s groupStoreStub) Leave(ctx context.Context, uid, groupID string) error {
+	return s.leave(ctx, uid, groupID)
+}
+
 func TestGroupsRequireAuthentication(t *testing.T) {
 	for _, method := range []string{"GET", "POST"} {
 		t.Run(method, func(t *testing.T) {
@@ -41,7 +46,7 @@ func TestGroupsRequireAuthentication(t *testing.T) {
 			})
 
 			w := httptest.NewRecorder()
-			httpapi.NewRouter(verifier, nil, groupStoreStub{}).ServeHTTP(w, httptest.NewRequest(method, "/api/groups", nil))
+			httpapi.NewRouter(verifier, nil, groupStoreStub{}, nil).ServeHTTP(w, httptest.NewRequest(method, "/api/groups", nil))
 
 			if w.Code != 401 {
 				t.Fatalf("status = %d", w.Code)
@@ -66,7 +71,7 @@ func TestGroupListUsesAuthenticatedMembership(t *testing.T) {
 	r := httptest.NewRequest("GET", "/api/groups?uid=another-user", nil)
 	r.Header.Set("Authorization", "Bearer token")
 	w := httptest.NewRecorder()
-	httpapi.NewRouter(verifier, nil, store).ServeHTTP(w, r)
+	httpapi.NewRouter(verifier, nil, store, nil).ServeHTTP(w, r)
 
 	if w.Code != 200 || strings.TrimSpace(w.Body.String()) != "[]" {
 		t.Fatalf("status=%d body=%s", w.Code, w.Body.String())
@@ -106,7 +111,7 @@ func TestGroupCreationValidatesClientInput(t *testing.T) {
 			r := httptest.NewRequest("POST", "/api/groups", strings.NewReader(tc.body))
 			r.Header.Set("Authorization", "Bearer token")
 			w := httptest.NewRecorder()
-			httpapi.NewRouter(verifier, nil, store).ServeHTTP(w, r)
+			httpapi.NewRouter(verifier, nil, store, nil).ServeHTTP(w, r)
 
 			if w.Code != tc.status {
 				t.Fatalf("status=%d body=%s", w.Code, w.Body.String())
@@ -166,7 +171,7 @@ func TestDeleteGroupEndpoint(t *testing.T) {
 			}
 
 			w := httptest.NewRecorder()
-			httpapi.NewRouter(verifier, nil, store).ServeHTTP(w, r)
+			httpapi.NewRouter(verifier, nil, store, nil).ServeHTTP(w, r)
 
 			if w.Code != tc.status {
 				t.Fatalf("status=%d body=%s", w.Code, w.Body.String())

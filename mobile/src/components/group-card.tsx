@@ -8,38 +8,43 @@ type GroupCardProps = {
   group: Group;
   currentUID: string;
   disabled: boolean;
-  deleting: boolean;
+  removing: boolean;
   onDelete: (groupID: string) => Promise<void>;
+  onLeave: (groupID: string) => Promise<void>;
+  onInvite: (group: Group) => void;
 };
 
-export function GroupCard({ group, currentUID, disabled, deleting, onDelete }: GroupCardProps) {
+export function GroupCard({ group, currentUID, disabled, removing, onDelete, onLeave, onInvite }: GroupCardProps) {
   const theme = useTheme();
   const isOwner = group.createdBy === currentUID;
 
-  function confirmDelete() {
-    Alert.alert(
-      'Delete group?',
-      `Delete “${group.name}” for everyone in the group? This cannot be undone.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: () => { void onDelete(group.id); } },
-      ],
-    );
+  function confirmExit() {
+    const title = isOwner ? 'Delete group?' : 'Leave group?';
+    const message = isOwner
+      ? `Delete “${group.name}” for everyone in the group? This cannot be undone.`
+      : `Leave “${group.name}”? The group will remain available to its other members.`;
+
+    function confirm() {
+      if (isOwner) void onDelete(group.id);
+      else void onLeave(group.id);
+    }
+
+    Alert.alert(title, message, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: isOwner ? 'Delete' : 'Leave', style: 'destructive', onPress: confirm },
+    ]);
   }
+
+  let actionLabel = isOwner ? 'Delete group' : 'Leave group';
+  if (removing) actionLabel = isOwner ? 'Deleting…' : 'Leaving…';
 
   return (
     <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
       <ThemedText type="subtitle">{group.name}</ThemedText>
       {group.description !== '' && <ThemedText>{group.description}</ThemedText>}
 
-      {isOwner && (
-        <Button
-          title={deleting ? 'Deleting…' : 'Delete group'}
-          accessibilityLabel={`Delete group ${group.name}`}
-          disabled={disabled}
-          onPress={confirmDelete}
-        />
-      )}
+      <Button title="Invite user" disabled={disabled} onPress={() => onInvite(group)} />
+      <Button title={actionLabel} disabled={disabled} onPress={confirmExit} />
     </View>
   );
 }

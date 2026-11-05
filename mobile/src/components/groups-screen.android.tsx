@@ -3,12 +3,16 @@ import { ActivityIndicator, Button, FlatList, StyleSheet, View } from 'react-nat
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CreateGroupModal } from '@/components/create-group-modal';
+import { GroupInvitations } from '@/components/group-invitations';
+import { InviteUserModal } from '@/components/invite-user-modal';
 import { GroupCard } from '@/components/group-card';
 import { ThemedText } from '@/components/themed-text';
 import { useAuthSession } from '@/hooks/use-auth-session.android';
+import { useGroupInvitations } from '@/hooks/use-group-invitations';
 import { useGroups } from '@/hooks/use-groups';
 import { useTheme } from '@/hooks/use-theme';
 import type { AuthenticatedUser } from '@/lib/api';
+import type { Group } from '@/lib/groups-api';
 
 export default function GroupsScreen() {
   const theme = useTheme();
@@ -27,11 +31,13 @@ export default function GroupsScreen() {
 
 function UserGroups({ user }: { user: AuthenticatedUser & { uid: string } }) {
   const {
-    groups, loading, error, creating, createError, deletingID,
-    submitGroup, removeGroup, reload, clearCreateError,
+    groups, loading, error, creating, createError, removingID,
+    submitGroup, removeGroup, leave, reload, clearCreateError,
   } = useGroups(user);
+  const inbox = useGroupInvitations(user, reload);
   const [showCreate, setShowCreate] = useState(false);
-  const busy = loading || creating || deletingID !== null;
+  const [inviteGroup, setInviteGroup] = useState<Group | null>(null);
+  const busy = loading || creating || removingID !== null || inbox.respondingID !== null;
 
   function openCreate() {
     clearCreateError();
@@ -43,6 +49,11 @@ function UserGroups({ user }: { user: AuthenticatedUser & { uid: string } }) {
     reload();
   }
 
+  function refreshAll() {
+    reload();
+    inbox.reload();
+  }
+
   return (
     <>
       <Button title="Create a new group" disabled={busy} onPress={openCreate} />
@@ -50,25 +61,46 @@ function UserGroups({ user }: { user: AuthenticatedUser & { uid: string } }) {
       {error && (
         <View style={styles.feedback}>
           <ThemedText accessibilityRole="alert">{error}</ThemedText>
-          <Button title="Retry" disabled={busy} onPress={reload} />
+          <Button title="Retry" disabled={busy} onPress={refreshAll} />
         </View>
       )}
 
       <FlatList
         data={groups}
         keyExtractor={(group) => group.id}
-        refreshing={loading}
-        onRefresh={reload}
+        refreshing={loading || inbox.loading}
+        onRefresh={refreshAll}
         contentContainerStyle={styles.list}
+        ListHeaderComponent={
+          <GroupInvitations
+            invitations={inbox.invitations}
+            loading={inbox.loading}
+            error={inbox.error}
+            respondingID={inbox.respondingID}
+            disabled={busy}
+            onRespond={inbox.respond}
+          />
+        }
         ListEmptyComponent={<GroupsEmptyState loading={loading} hasError={error !== null} />}
         renderItem={({ item }) => (
-          <GroupCard group={item} currentUID={user.uid} disabled={busy}
-            deleting={deletingID === item.id} onDelete={removeGroup} />
+          <GroupCard
+            group={item}
+            currentUID={user.uid}
+            disabled={busy}
+            removing={removingID === item.id}
+            onDelete={removeGroup}
+            onLeave={leave}
+            onInvite={setInviteGroup}
+          />
         )}
       />
 
       {showCreate && (
         <CreateGroupModal creating={creating} error={createError} onCreate={submitGroup} onClose={closeCreate} />
+      )}
+
+      {inviteGroup && (
+        <InviteUserModal user={user} group={inviteGroup} onClose={() => setInviteGroup(null)} />
       )}
     </>
   );

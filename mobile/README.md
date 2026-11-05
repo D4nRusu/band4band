@@ -123,13 +123,21 @@ A Firebase sign-in alone is not backend confirmation. A backend 401 generally me
 
 The Groups tab shows groups you belong to. Sign in from Home first, then open Groups. Use **Create a new group** to open the name/description dialog. The description is optional. On save, Go creates the group with your verified UID as its first member and the group appears in your list. Pull down to refresh; the list also refreshes when returning to the tab.
 
-Owners see a **Delete group** button on their own group cards. Confirming deletes the group for everyone; this cannot be undone. Go checks the verified UID against `createdBy` before deleting, even if someone bypasses the UI. Other members do not see the delete button. Leaving a group is not implemented yet.
+Owners see a **Delete group** button on their own group cards. Confirming deletes the group for everyone; this cannot be undone. Go checks the verified UID against `createdBy` before deleting, even if someone bypasses the UI. Other members see **Leave group** instead, which removes only their own membership after confirmation.
 
-Names are limited to 1–100 characters and descriptions to 1,000 characters after trimming. Group names need not be unique. Existing memberships are loaded from Go, not directly from Firestore. Invitations, other members, balances, and group images are outside this milestone.
+Names are limited to 1–100 characters and descriptions to 1,000 characters after trimming. Group names need not be unique. Existing memberships are loaded from Go, not directly from Firestore. Invitations are available by exact username through **Invite user**. All current members can invite, not just the owner. Balances, removing other members, and group images remain outside this milestone.
 
 For later device verification: create a group, restart the app, and confirm it remains listed. Sign in with a different account and confirm the first account's group is not visible. Check cancel, empty-name validation, optional descriptions, and backend/network errors in the dialog. A timed-out create may still have reached Go: close the dialog and refresh before submitting again.
 
 Restart Go and reload Metro after updating this code. No APK rebuild is required for these JavaScript and backend changes.
+
+## Group invitations
+
+Use **Invite user** on a group card and enter the person's existing username without `@`. Matching is case-insensitive. Accounts must have chosen their username first. Sending the same group/person invitation again does not create another card or replace its original sender. Existing members cannot be invited again.
+
+The recipient sees invitation cards above their groups, with the group name, inviter, and **Accept / Decline**. Accepting adds the group to their list; declining does not. Another invitation may be sent after a decline. Pull-to-refresh updates both lists. Invitations also refresh every 15 seconds while the Groups tab is active and the app is in the foreground. No system push notifications are sent.
+
+For later device testing, use two or three accounts: invite another user, confirm one card after repeated invitations, accept, and check that the new member can invite a third user. Check decline followed by re-invite, non-owner Leave versus owner Delete, and that deleting a group removes its pending invitations. The owner cannot leave their own group. Invitations sent before a member leaves remain valid until the recipient responds or the owner deletes the group.
 
 ## Automated checks
 

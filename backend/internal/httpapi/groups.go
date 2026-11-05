@@ -13,6 +13,7 @@ type GroupStore interface {
 	ListForUser(context.Context, string) ([]models.Group, error)
 	Create(context.Context, string, models.GroupInput) (models.Group, error)
 	Delete(context.Context, string, string) error
+	Leave(context.Context, string, string) error
 }
 
 type groupHandler struct {
@@ -89,5 +90,20 @@ func (h groupHandler) deleteGroup(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Cache-Control", "no-store")
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h groupHandler) leaveGroup(w http.ResponseWriter, r *http.Request) {
+	uid, ok := UIDFromContext(r.Context())
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	if err := h.groups.Leave(r.Context(), uid, r.PathValue("groupID")); err != nil {
+		writeGroupError(w, err)
+		return
+	}
+
 	w.WriteHeader(http.StatusNoContent)
 }
