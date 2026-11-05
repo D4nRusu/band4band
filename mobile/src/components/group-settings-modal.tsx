@@ -1,4 +1,5 @@
-import { ActivityIndicator, Alert, Button, Modal, Pressable, StyleSheet, View } from 'react-native';
+import { SymbolView } from 'expo-symbols';
+import { ActivityIndicator, Alert, Modal, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { useExitGroup } from '@/hooks/use-exit-group';
@@ -39,19 +40,39 @@ export function GroupSettingsModal({ user, group, onClose, onEdit }: GroupSettin
     <Modal transparent animationType="fade" onRequestClose={close}>
       <View style={styles.overlay}>
         <View style={[styles.dialog, { backgroundColor: theme.background }]} accessibilityViewIsModal>
-          <ThemedText type="subtitle" accessibilityRole="header">Group settings</ThemedText>
+          <View style={styles.header}>
+            <Pressable onPress={close} disabled={working} accessibilityRole="button"
+              accessibilityLabel="Back to group" accessibilityState={{ disabled: working }}
+              style={({ pressed }) => [styles.back, pressed && styles.pressed, working && styles.disabled]}>
+              <SymbolView name={{ ios: 'arrow.left', android: 'arrow_back', web: 'arrow_back' }}
+                tintColor={theme.text} size={24} />
+            </Pressable>
+            <ThemedText style={styles.title} type="subtitle" accessibilityRole="header">Group settings</ThemedText>
+          </View>
 
-          <Button title="Edit group" disabled={working} onPress={onEdit} />
+          <Pressable onPress={onEdit} disabled={working} accessibilityRole="button"
+            accessibilityLabel="Edit group" accessibilityState={{ disabled: working }}
+            style={({ pressed }) => [styles.action, { backgroundColor: theme.backgroundElement },
+              pressed && styles.pressed, working && styles.disabled]}>
+            <SymbolView name={{ ios: 'pencil', android: 'edit', web: 'edit' }} tintColor={theme.text} size={24} />
+            <ThemedText style={styles.actionLabel}>Edit group</ThemedText>
+          </Pressable>
 
           <Pressable onPress={confirmExit} disabled={working} accessibilityRole="button"
-            accessibilityLabel={actionLabel} accessibilityState={{ disabled: working }} style={styles.action}>
-            <ThemedText style={styles.destructive}>{actionLabel}</ThemedText>
+            accessibilityLabel={actionLabel} accessibilityState={{ disabled: working }}
+            style={({ pressed }) => [styles.action, { backgroundColor: theme.backgroundElement },
+              pressed && styles.pressed, working && styles.disabled]}>
+            <SymbolView
+              name={isOwner
+                ? { ios: 'trash', android: 'delete', web: 'delete' }
+                : { ios: 'rectangle.portrait.and.arrow.right', android: 'logout', web: 'logout' }}
+              tintColor="#d32f2f" size={24} />
+            <ThemedText style={[styles.actionLabel, styles.destructive]}>{actionLabel}</ThemedText>
           </Pressable>
 
           {working && <ActivityIndicator accessibilityLabel={isOwner ? 'Deleting group' : 'Leaving group'} />}
           {error && <ThemedText accessibilityRole="alert">{error}</ThemedText>}
 
-          <Button title="Close" disabled={working} onPress={close} />
         </View>
       </View>
     </Modal>
@@ -60,7 +81,13 @@ export function GroupSettingsModal({ user, group, onClose, onEdit }: GroupSettin
 
 const styles = StyleSheet.create({
   overlay: { flex: 1, justifyContent: 'center', padding: 24, backgroundColor: 'rgba(0, 0, 0, 0.5)' },
-  dialog: { padding: 24, gap: 16, borderRadius: 16 },
-  action: { minHeight: 48, justifyContent: 'center' },
+  dialog: { width: '100%', maxWidth: 500, alignSelf: 'center', padding: 20, gap: 12, borderRadius: 20 },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
+  back: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center', borderRadius: 24 },
+  title: { flex: 1, fontSize: 24, lineHeight: 32 },
+  action: { minHeight: 60, flexDirection: 'row', alignItems: 'center', padding: 16, gap: 16, borderRadius: 12 },
+  actionLabel: { flex: 1, fontWeight: '600' },
+  pressed: { opacity: 0.7 },
+  disabled: { opacity: 0.5 },
   destructive: { color: '#d32f2f' },
 });
