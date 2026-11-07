@@ -31,16 +31,7 @@ async function requestProfile(
   path: string,
   options: { method?: string; body?: string; signal?: AbortSignal },
 ): Promise<UserProfile> {
-  const baseUrl = getApiBaseUrl();
-  const firebaseIdToken = await getFirebaseIdToken(user);
-  const response = await fetch(`${baseUrl}${path}`, {
-    ...options,
-    headers: {
-      Authorization: `Bearer ${firebaseIdToken}`,
-      'Content-Type': 'application/json',
-    },
-    redirect: 'error',
-  });
+  const response = await authenticatedRequest(user, path, options);
 
   await checkProfileResponse(response);
 
@@ -50,6 +41,24 @@ async function requestProfile(
   }
 
   return body;
+}
+
+export async function authenticatedRequest(
+  user: AuthenticatedUser,
+  path: string,
+  options: { method?: string; body?: string; signal?: AbortSignal } = {},
+): Promise<Response> {
+  const baseUrl = getApiBaseUrl();
+  const firebaseIdToken = await getFirebaseIdToken(user);
+
+  return fetch(`${baseUrl}${path}`, {
+    ...options,
+    headers: {
+      Authorization: `Bearer ${firebaseIdToken}`,
+      'Content-Type': 'application/json',
+    },
+    redirect: 'error',
+  });
 }
 
 function getApiBaseUrl(): string {

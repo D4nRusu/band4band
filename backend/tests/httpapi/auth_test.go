@@ -131,7 +131,7 @@ func TestRoutes(t *testing.T) {
 				get: func(_ context.Context, identity models.Identity) (models.User, error) {
 					return models.User{UID: identity.UID}, nil
 				},
-			}).ServeHTTP(w, r)
+			}, nil, nil).ServeHTTP(w, r)
 			if w.Code != tc.status {
 				t.Fatalf("status = %d, want %d", w.Code, tc.status)
 			}

@@ -119,6 +119,26 @@ The generated Android **debug** manifest already allows cleartext HTTP for local
 
 A Firebase sign-in alone is not backend confirmation. A backend 401 generally means the Firebase token/project does not match the Go verification configuration. Check that mobile and backend use the same Firebase project.
 
+## Groups
+
+The Groups tab shows groups you belong to. Sign in from Home first, then open Groups. Use **Create a new group** to open the name/description dialog. The description is optional. On save, Go creates the group with your verified UID as its first member and the group appears in your list. Pull down to refresh; the list also refreshes when returning to the tab.
+
+Open a group and tap the gear icon in the bottom-right corner of its banner to open **Group settings**. Owners see a red **Delete group** action. Confirming deletes the group for everyone; this cannot be undone. Go checks the verified UID against `createdBy` before deleting, even if someone bypasses the UI. Other members see **Leave group** instead, which removes only their own membership after confirmation.
+
+Names are limited to 1–100 characters and descriptions to 1,000 characters after trimming. Group names need not be unique. Existing memberships are loaded from Go, not directly from Firestore. Invitations are available by exact username through the invite icon beside the members popup title. All current members can invite, not just the owner. Balances, removing other members, and group images remain outside this milestone.
+
+For later device verification: create a group, restart the app, and confirm it remains listed. Sign in with a different account and confirm the first account's group is not visible. Check cancel, empty-name validation, optional descriptions, and backend/network errors in the dialog. A timed-out create may still have reached Go: close the dialog and refresh before submitting again.
+
+Restart Go and reload Metro after updating this code. No APK rebuild is required for these JavaScript and backend changes.
+
+## Group invitations
+
+Open a group, tap **X people**, then tap the invite icon beside **People in [group name]** and enter the person's existing username without `@`. If the group contains only its owner, a hint points to the invite icon. Matching is case-insensitive. Accounts must have chosen their username first. Sending the same group/person invitation again does not create another card or replace its original sender. Existing members cannot be invited again.
+
+The recipient sees invitation cards above their groups, with the group name, inviter, and **Accept / Decline**. Accepting adds the group to their list; declining does not. Another invitation may be sent after a decline. Pull-to-refresh updates both lists. Invitations also refresh every 15 seconds while the Groups tab is active and the app is in the foreground. No system push notifications are sent.
+
+For later device testing, use two or three accounts: invite another user, confirm one card after repeated invitations, accept, and check that the new member can invite a third user. Check decline followed by re-invite, non-owner Leave versus owner Delete, and that deleting a group removes its pending invitations. The owner cannot leave their own group. Invitations sent before a member leaves remain valid until the recipient responds or the owner deletes the group.
+
 ## Automated checks
 
 ```bash
@@ -133,3 +153,13 @@ Tests live in `tests/` and use Node's built-in test runner with native TypeScrip
 Android prebuild can be checked with `npx expo prebuild --platform android --no-install`; it generates ignored native directories. Do not edit those directories by hand. Full cross-platform introspection requires iOS Firebase configuration, which is not supplied here.
 
 References: [Expo Firebase](https://docs.expo.dev/guides/using-firebase/), [Google Sign-In Expo setup](https://react-native-google-signin.github.io/docs/setting-up/expo), [APK builds and installation](https://docs.expo.dev/build-reference/apk/), [development client usage](https://docs.expo.dev/develop/development-builds/use-development-builds/).
+
+### Group pages
+
+Tap a group's name or description to open its page within the Groups tab. The banner uses a local placeholder image. Tap **X people** to see member photos, names, and emails; close the popup or use Android Back to return. Pull down on the group page to refresh its details and member count. Member information is fetched through Go when the popup opens and is restricted to current group members.
+
+Restart Go and reload Metro to use these routes; no new APK is needed. Physical-device UI and Firestore runtime verification remain deferred.
+
+### Editing groups
+
+Open a group's gear icon, then **Edit group**. Any current member can change the name and description. Save changes returns to settings and updates the group page. The image button is a disabled placeholder; image uploads are not available yet. Restart Go for the new update endpoint and reload Metro; no APK rebuild is required.

@@ -49,7 +49,7 @@ func TestCurrentProfileUsesVerifiedClaims(t *testing.T) {
 	r := httptest.NewRequest("GET", "/api/users/me?uid=attacker", nil)
 	r.Header.Set("Authorization", "Bearer token")
 	w := httptest.NewRecorder()
-	httpapi.NewRouter(verifier, store).ServeHTTP(w, r)
+	httpapi.NewRouter(verifier, store, nil, nil).ServeHTTP(w, r)
 	var got models.User
 	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
 		t.Fatal(err)
@@ -96,7 +96,7 @@ func TestUsernameEndpoint(t *testing.T) {
 			r := httptest.NewRequest("PUT", "/api/users/me/username", strings.NewReader(tc.body))
 			r.Header.Set("Authorization", "Bearer token")
 			w := httptest.NewRecorder()
-			httpapi.NewRouter(verifier, store).ServeHTTP(w, r)
+			httpapi.NewRouter(verifier, store, nil, nil).ServeHTTP(w, r)
 			if w.Code != tc.status {
 				t.Fatalf("status=%d body=%s", w.Code, w.Body.String())
 			}
@@ -124,7 +124,7 @@ func TestProfilesRequireAuthentication(t *testing.T) {
 				return nil, nil
 			})
 			w := httptest.NewRecorder()
-			httpapi.NewRouter(verifier, userStoreStub{}).ServeHTTP(w, httptest.NewRequest(tc.method, tc.path, nil))
+			httpapi.NewRouter(verifier, userStoreStub{}, nil, nil).ServeHTTP(w, httptest.NewRequest(tc.method, tc.path, nil))
 			if w.Code != http.StatusUnauthorized {
 				t.Fatalf("status=%d", w.Code)
 			}
@@ -140,7 +140,7 @@ func TestProfileReadFailureIsNotAnEmptyProfile(t *testing.T) {
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest("GET", "/api/users/me", nil)
 	r.Header.Set("Authorization", "Bearer token")
-	httpapi.NewRouter(verifier, store).ServeHTTP(w, r)
+	httpapi.NewRouter(verifier, store, nil, nil).ServeHTTP(w, r)
 	if w.Code != 500 {
 		t.Fatalf("status=%d", w.Code)
 	}
