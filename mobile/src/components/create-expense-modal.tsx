@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 
 import { ErrorMessage } from '@/components/error-message';
+import { ExpensePayerSelect } from '@/components/expense-payer-select';
 import { ExpenseParticipants } from '@/components/expense-participants';
 import { ExpenseChoices } from '@/components/expense-choices';
 import { ThemedText } from '@/components/themed-text';
@@ -139,8 +140,8 @@ export function CreateExpenseModal({ user, group, saving, error, onSave, onClose
               <>
                 <ExpenseChoices label="Category" selected={categoryID} disabled={saving} onSelect={chooseCategory}
                   choices={options.categories.map((category) => ({ id: category.id, label: `${categoryIcons[category.icon].image} ${category.name}` }))} />
-                <ExpenseChoices label="Paid by" selected={paidBy} disabled={saving} onSelect={choosePayer}
-                  choices={options.members.map((member) => ({ id: member.uid, label: member.name || member.username || member.uid }))} />
+                <ExpensePayerSelect members={options.members} selectedUID={paidBy} currentUID={user.uid}
+                  disabled={saving} onSelect={choosePayer} />
                 <ExpenseParticipants members={options.members} selectedUIDs={participantUIDs}
                   disabled={saving} onToggle={toggleParticipant} />
               </>
