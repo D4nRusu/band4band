@@ -70,3 +70,34 @@ func (s *GroupStore) AddCategory(ctx context.Context, uid, groupID string, input
 
 	return category, err
 }
+
+func (s *GroupStore) DeleteCategory(ctx context.Context, uid, groupID, categoryID string) error {
+	if !validDocumentID(groupID) {
+		return models.ErrInvalidGroupID
+	}
+
+	if !validDocumentID(categoryID) {
+		return models.ErrInvalidCategoryID
+	}
+
+	return s.db.RunTransaction(ctx, func(ctx context.Context, tx *firestore.Transaction) error {
+		group, err := s.readMemberGroup(tx, uid, groupID)
+		if err != nil {
+			return err
+		}
+
+		for _, category := range models.DefaultCategories() {
+			if category.ID == categoryID {
+				return models.ErrDefaultCategory
+			}
+		}
+
+		if _, exists := group.CustomCategories[categoryID]; !exists {
+			return nil
+		}
+
+		return tx.Update(s.db.Collection("groups").Doc(groupID), []firestore.Update{{
+			FieldPath: []string{"customCategories", categoryID}, Value: firestore.Delete,
+		}})
+	})
+}

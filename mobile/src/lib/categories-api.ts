@@ -42,6 +42,19 @@ export async function addCategory(
   return body;
 }
 
+export async function deleteCategory(
+  user: AuthenticatedUser, groupID: string, categoryID: string, signal?: AbortSignal,
+): Promise<void> {
+  const response = await authenticatedRequest(user,
+    `/api/groups/${encodeURIComponent(groupID)}/categories/${encodeURIComponent(categoryID)}`, {
+      method: 'DELETE', signal,
+    });
+
+  if (response.status === 400) throw new Error('This category cannot be deleted.');
+
+  await checkResponse(response);
+}
+
 async function checkResponse(response: Response) {
   if (response.status === 409) throw new Error('That category name already exists. Choose a different name.');
 

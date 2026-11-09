@@ -1,7 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { useState } from 'react';
-import { ActivityIndicator, Button, FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, Button, FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AddCategoryModal } from '@/components/add-category-modal';
@@ -10,7 +10,7 @@ import { useAuthSession } from '@/hooks/use-auth-session.android';
 import { useGroupCategories } from '@/hooks/use-group-categories';
 import { useTheme } from '@/hooks/use-theme';
 import type { AuthenticatedUser } from '@/lib/api';
-import { categoryIcons } from '@/lib/categories-api';
+import { categoryIcons, type Category } from '@/lib/categories-api';
 
 export default function GroupCategoriesScreen() {
   const theme = useTheme();
@@ -42,8 +42,17 @@ export default function GroupCategoriesScreen() {
 
 function CategoryList({ user, groupID }: { user: AuthenticatedUser; groupID: string }) {
   const theme = useTheme();
-  const { categories, loading, error, saving, saveError, reload, save, clearSaveError } = useGroupCategories(user, groupID);
+  const { categories, loading, error, removingID, remove, saving, saveError, reload, save, clearSaveError } = useGroupCategories(user, groupID);
   const [adding, setAdding] = useState(false);
+
+  const busy = loading || saving || removingID !== null;
+
+  function confirmDelete(category: Category) {
+    Alert.alert('Delete category?', `Delete “${category.name}” from this group?`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: () => void remove(category.id) },
+    ]);
+  }
 
   function openAdd() {
     clearSaveError();
@@ -53,12 +62,12 @@ function CategoryList({ user, groupID }: { user: AuthenticatedUser; groupID: str
   return (
     <>
       <ThemedText type="small">Shared defaults and custom categories for this group.</ThemedText>
-      <Button title="Add new category" disabled={loading || saving || error !== null} onPress={openAdd} />
+      <Button title="Add new category" disabled={busy || error !== null} onPress={openAdd} />
 
       {error && (
         <View style={styles.feedback}>
           <ThemedText accessibilityRole="alert">{error}</ThemedText>
-          <Button title="Retry" onPress={reload} disabled={loading || saving} />
+          <Button title="Retry" onPress={reload} disabled={busy} />
         </View>
       )}
 
@@ -71,6 +80,18 @@ function CategoryList({ user, groupID }: { user: AuthenticatedUser; groupID: str
               <ThemedText>{item.name}</ThemedText>
               <ThemedText type="small" themeColor="textSecondary">{item.isDefault ? 'Default' : 'Custom'}</ThemedText>
             </View>
+
+            {!item.isDefault && (
+              <Pressable onPress={() => confirmDelete(item)} disabled={busy}
+                accessibilityRole="button" accessibilityLabel={`Delete category ${item.name}`}
+                accessibilityState={{ disabled: busy }} style={styles.delete}>
+                {removingID === item.id ? (
+                  <ActivityIndicator accessibilityLabel="Deleting category" />
+                ) : (
+                  <SymbolView name={{ ios: 'trash', android: 'delete', web: 'delete' }} size={20} tintColor="#d32f2f" />
+                )}
+              </Pressable>
+            )}
           </View>
         )} />
 
@@ -89,5 +110,6 @@ const styles = StyleSheet.create({
   list: { gap: 8, paddingBottom: 24 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 16, padding: 16, borderRadius: 12 },
   emoji: { fontSize: 28, lineHeight: 36 },
+  delete: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   details: { flex: 1, gap: 4 },
 });

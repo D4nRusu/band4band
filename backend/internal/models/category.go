@@ -7,6 +7,8 @@ import (
 )
 
 var (
+	ErrInvalidCategoryID   = errors.New("invalid category ID")
+	ErrDefaultCategory     = errors.New("default categories cannot be deleted")
 	ErrInvalidCategoryName = errors.New("category name must contain 1-40 characters")
 	ErrInvalidCategoryIcon = errors.New("choose a supported category icon")
 	ErrCategoryExists      = errors.New("a category with this name already exists")

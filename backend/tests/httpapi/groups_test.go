@@ -15,15 +15,16 @@ import (
 )
 
 type groupStoreStub struct {
-	categories  func(context.Context, string, string) ([]models.Category, error)
-	addCategory func(context.Context, string, string, models.CategoryInput) (models.Category, error)
-	update      func(context.Context, string, string, models.GroupInput) (models.Group, error)
-	details     func(context.Context, string, string) (models.Group, error)
-	members     func(context.Context, string, string) ([]models.GroupMember, error)
-	leave       func(context.Context, string, string) error
-	remove      func(context.Context, string, string) error
-	list        func(context.Context, string) ([]models.Group, error)
-	create      func(context.Context, string, models.GroupInput) (models.Group, error)
+	deleteCategory func(context.Context, string, string, string) error
+	categories     func(context.Context, string, string) ([]models.Category, error)
+	addCategory    func(context.Context, string, string, models.CategoryInput) (models.Category, error)
+	update         func(context.Context, string, string, models.GroupInput) (models.Group, error)
+	details        func(context.Context, string, string) (models.Group, error)
+	members        func(context.Context, string, string) ([]models.GroupMember, error)
+	leave          func(context.Context, string, string) error
+	remove         func(context.Context, string, string) error
+	list           func(context.Context, string) ([]models.Group, error)
+	create         func(context.Context, string, models.GroupInput) (models.Group, error)
 }
 
 func (s groupStoreStub) ListForUser(ctx context.Context, uid string) ([]models.Group, error) {
@@ -214,4 +215,8 @@ func (s groupStoreStub) Categories(ctx context.Context, uid, id string) ([]model
 }
 func (s groupStoreStub) AddCategory(ctx context.Context, uid, id string, input models.CategoryInput) (models.Category, error) {
 	return s.addCategory(ctx, uid, id, input)
+}
+
+func (s groupStoreStub) DeleteCategory(ctx context.Context, uid, groupID, categoryID string) error {
+	return s.deleteCategory(ctx, uid, groupID, categoryID)
 }

@@ -10,6 +10,7 @@ import (
 )
 
 type GroupStore interface {
+	DeleteCategory(context.Context, string, string, string) error
 	Categories(context.Context, string, string) ([]models.Category, error)
 	AddCategory(context.Context, string, string, models.CategoryInput) (models.Category, error)
 	Update(context.Context, string, string, models.GroupInput) (models.Group, error)

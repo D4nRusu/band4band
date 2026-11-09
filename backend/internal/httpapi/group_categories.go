@@ -70,3 +70,25 @@ func (h groupHandler) addCategory(w http.ResponseWriter, r *http.Request) {
 
 	writeGroupJSON(w, http.StatusCreated, category)
 }
+
+func (h groupHandler) deleteCategory(w http.ResponseWriter, r *http.Request) {
+	uid, ok := UIDFromContext(r.Context())
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	err := h.groups.DeleteCategory(r.Context(), uid, r.PathValue("groupID"), r.PathValue("categoryID"))
+	if errors.Is(err, models.ErrDefaultCategory) || errors.Is(err, models.ErrInvalidCategoryID) {
+		writeGroupRequestError(w, err.Error())
+		return
+	}
+
+	if err != nil {
+		writeGroupError(w, err)
+		return
+	}
+
+	w.Header().Set("Cache-Control", "no-store")
+	w.WriteHeader(http.StatusNoContent)
+}

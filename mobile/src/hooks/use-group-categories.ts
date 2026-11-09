@@ -2,13 +2,14 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { AuthenticatedUser } from '@/lib/api';
-import { addCategory, getCategories, type Category, type CategoryInput } from '@/lib/categories-api';
+import { addCategory, deleteCategory, getCategories, type Category, type CategoryInput } from '@/lib/categories-api';
 import { GroupUnavailableError } from '@/lib/groups-api';
 
 export function useGroupCategories(user: AuthenticatedUser, groupID: string) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [removingID, setRemovingID] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const cancelLoad = useRef<(() => void) | null>(null);
@@ -108,9 +109,52 @@ export function useGroupCategories(user: AuthenticatedUser, groupID: string) {
     }
   }
 
+  async function remove(categoryID: string) {
+    if (saveRequest.current) return;
+
+    cancelLoad.current?.();
+    setLoading(false);
+    const controller = new AbortController();
+    saveRequest.current = controller;
+    setRemovingID(categoryID);
+    setError(null);
+    const timeout = setTimeout(() => controller.abort(), 15000);
+
+    try {
+      await deleteCategory(user, groupID, categoryID, controller.signal);
+      if (controller.signal.aborted) return;
+
+      setCategories((previous) => previous.filter((category) => category.id !== categoryID));
+    } catch (cause) {
+      if (saveRequest.current !== controller) return;
+
+      if (cause instanceof GroupUnavailableError) {
+        router.dismissTo('/groups');
+        return;
+      }
+
+      let message = 'Could not delete this category.';
+
+      if (controller.signal.aborted) {
+        message = 'Deletion could not be confirmed. Refresh categories before retrying.';
+      } else if (cause instanceof Error) {
+        message = cause.message;
+      }
+
+      setError(message);
+    } finally {
+      clearTimeout(timeout);
+
+      if (saveRequest.current === controller) {
+        saveRequest.current = null;
+        setRemovingID(null);
+      }
+    }
+  }
+
   function clearSaveError() {
     setSaveError(null);
   }
 
-  return { categories, loading, error, saving, saveError, reload, save, clearSaveError };
+  return { categories, loading, error, removingID, remove, saving, saveError, reload, save, clearSaveError };
 }
