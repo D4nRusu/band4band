@@ -1,6 +1,6 @@
 import { SymbolView } from 'expo-symbols';
 import { useState } from 'react';
-import { Keyboard, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Image, Keyboard, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
@@ -78,15 +78,23 @@ export function ExpensePayerSelect({ members, selectedUID, currentUID, disabled,
 
 function PayerLabel({ member, isYou, showDetail = false }: { member?: GroupMember; isYou: boolean; showDetail?: boolean }) {
   const theme = useTheme();
+  const [failedPhoto, setFailedPhoto] = useState<string | null>(null);
   const name = member ? memberName(member) : 'Choose a payer';
   const initial = Array.from(name.trim())[0]?.toUpperCase() || '?';
   const detail = member?.username ? `@${member.username}` : member?.email;
+  const photoURL = member?.photoURL ?? '';
+  const showPhoto = photoURL.startsWith('https://') && photoURL !== failedPhoto;
 
   return (
     <View style={styles.label}>
-      <View style={[styles.avatar, { backgroundColor: theme.backgroundSelected }]}>
-        <ThemedText type="smallBold" accessible={false}>{initial}</ThemedText>
-      </View>
+      {showPhoto ? (
+        <Image source={{ uri: photoURL }} style={styles.avatar} accessible={false}
+          onError={() => setFailedPhoto(photoURL)} />
+      ) : (
+        <View style={[styles.avatar, { backgroundColor: theme.backgroundSelected }]}>
+          <ThemedText type="smallBold" accessible={false}>{initial}</ThemedText>
+        </View>
+      )}
       <View style={styles.name}>
         <ThemedText type="smallBold" numberOfLines={1}>{name}{isYou ? ' (You)' : ''}</ThemedText>
         {showDetail && detail && <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>{detail}</ThemedText>}
