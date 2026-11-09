@@ -1,7 +1,6 @@
 import { SymbolView } from 'expo-symbols';
 import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
-import { ExpenseContributions } from '@/components/expense-contributions';
 import { ThemedText } from '@/components/themed-text';
 import { useDeleteExpense } from '@/hooks/use-delete-expense';
 import { useTheme } from '@/hooks/use-theme';
@@ -20,8 +19,8 @@ type ExpenseDetailsModalProps = {
 export function ExpenseDetailsModal({ user, expense, onClose, onDeleted }: ExpenseDetailsModalProps) {
   const theme = useTheme();
   const { deleting, error, remove } = useDeleteExpense(user, expense);
-  const addedAt = new Date(expense.createdAt).toLocaleString(undefined, {
-    year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit',
+  const addedOn = new Date(expense.createdAt).toLocaleDateString(undefined, {
+    year: 'numeric', month: 'short', day: 'numeric',
   });
 
   function close() {
@@ -56,16 +55,23 @@ export function ExpenseDetailsModal({ user, expense, onClose, onDeleted }: Expen
           </View>
 
           <ScrollView contentContainerStyle={styles.content}>
-            <ThemedText type="subtitle">{expense.name}</ThemedText>
-            <ThemedText style={styles.amount}>{formatExpenseAmount(expense.amountMinor, expense.currency)}</ThemedText>
-            <ThemedText>{categoryIcons[expense.categoryIcon].image} {expense.categoryName}</ThemedText>
-            <ThemedText>Paid by {expense.payerName}</ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">Added {addedAt} (local time)</ThemedText>
+            <View style={styles.summary}>
+              <View style={styles.titleRow}>
+                <ThemedText type="subtitle" style={styles.title}>{expense.name}</ThemedText>
+                <ThemedText style={styles.amount} numberOfLines={1} adjustsFontSizeToFit>
+                  {formatExpenseAmount(expense.amountMinor, expense.currency)}
+                </ThemedText>
+              </View>
+              <ThemedText type="small" themeColor="textSecondary">
+                {categoryIcons[expense.categoryIcon].image} {expense.categoryName}
+              </ThemedText>
+              <ThemedText type="small" themeColor="textSecondary">Paid by {expense.payerName} on {addedOn}</ThemedText>
+            </View>
 
             {deleting && <ActivityIndicator accessibilityLabel="Deleting expense" />}
             {error && <ThemedText accessibilityRole="alert">{error}</ThemedText>}
 
-            <ExpenseContributions user={user} groupID={expense.groupID} />
+            <ThemedText themeColor="textSecondary" style={styles.contributions}>No contributions</ThemedText>
           </ScrollView>
         </View>
       </View>
@@ -80,5 +86,9 @@ const styles = StyleSheet.create({
   heading: { flex: 1 },
   iconButton: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center' },
   content: { padding: 24, paddingTop: 8, gap: 16 },
-  amount: { fontSize: 24, lineHeight: 32, fontWeight: '600' },
+  summary: { gap: 6 },
+  titleRow: { flexDirection: 'row', alignItems: 'baseline', gap: 12 },
+  title: { flex: 1, minWidth: 0 },
+  amount: { maxWidth: '45%', fontSize: 24, lineHeight: 32, fontWeight: '600', textAlign: 'right' },
+  contributions: { marginTop: 8 },
 });
