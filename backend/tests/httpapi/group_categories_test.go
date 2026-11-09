@@ -70,3 +70,46 @@ func TestCategoryEndpoints(t *testing.T) {
 		})
 	}
 }
+
+func TestDeleteCategoryEndpoint(t *testing.T) {
+	for _, tc := range []struct {
+		name          string
+		authenticated bool
+		err           error
+		status        int
+	}{
+		{"member", true, nil, 204},
+		{"default", true, models.ErrDefaultCategory, 400},
+		{"invalid ID", true, models.ErrInvalidCategoryID, 400},
+		{"outsider", true, models.ErrGroupAccessForbidden, 403},
+		{"missing group", true, models.ErrGroupNotFound, 404},
+		{"unauthenticated", false, nil, 401},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			called := false
+			store := groupStoreStub{deleteCategory: func(_ context.Context, uid, groupID, categoryID string) error {
+				called = true
+				if uid != "member" || groupID != "group-id" || categoryID != "custom-id" {
+					t.Fatalf("uid=%s group=%s category=%s", uid, groupID, categoryID)
+				}
+
+				return tc.err
+			}}
+			verifier := verifierFunc(func(context.Context, string) (*auth.Token, error) { return &auth.Token{UID: "member"}, nil })
+			r := httptest.NewRequest("DELETE", "/api/groups/group-id/categories/custom-id?uid=attacker", nil)
+			if tc.authenticated {
+				r.Header.Set("Authorization", "Bearer token")
+			}
+
+			w := httptest.NewRecorder()
+			httpapi.NewRouter(verifier, nil, store, nil).ServeHTTP(w, r)
+			if w.Code != tc.status || called != tc.authenticated {
+				t.Fatalf("status=%d called=%v", w.Code, called)
+			}
+
+			if tc.status == 204 && w.Body.Len() != 0 {
+				t.Fatal("204 has a body")
+			}
+		})
+	}
+}

@@ -1,6 +1,7 @@
 import { authenticatedRequest, type AuthenticatedUser } from '@/lib/api';
 
 export interface Group {
+  currency: string;
   id: string;
   name: string;
   description: string;
@@ -133,6 +134,10 @@ export async function deleteGroup(user: AuthenticatedUser, groupID: string, sign
     signal,
   });
 
+  if (response.status === 409) {
+    throw new Error('This group has expenses. Deletion is unavailable until settlement checks are implemented.');
+  }
+
   // A stale list or a retried delete may refer to a group already removed.
   if (response.status === 404) return;
 
@@ -185,5 +190,5 @@ function isGroup(value: unknown): value is Group {
   const hasMembers = Array.isArray(group.memberUIDs)
     && group.memberUIDs.every((uid) => typeof uid === 'string' && uid.length > 0);
 
-  return hasDetails && hasCreator && hasCreationDate && hasMembers;
+  return hasDetails && hasCreator && hasCreationDate && hasMembers && group.currency === 'EUR';
 }

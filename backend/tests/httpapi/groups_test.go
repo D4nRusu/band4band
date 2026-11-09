@@ -15,6 +15,8 @@ import (
 )
 
 type groupStoreStub struct {
+	expenses       func(context.Context, string, string) ([]models.Expense, error)
+	createExpense  func(context.Context, string, string, models.ExpenseInput) (models.Expense, error)
 	deleteCategory func(context.Context, string, string, string) error
 	categories     func(context.Context, string, string) ([]models.Category, error)
 	addCategory    func(context.Context, string, string, models.CategoryInput) (models.Category, error)
@@ -151,6 +153,7 @@ func TestDeleteGroupEndpoint(t *testing.T) {
 		{"owner", true, nil, 204},
 		{"non-owner", true, models.ErrGroupForbidden, 403},
 		{"missing", true, models.ErrGroupNotFound, 404},
+		{"has expenses", true, models.ErrGroupHasExpenses, 409},
 		{"invalid ID", true, models.ErrInvalidGroupID, 400},
 		{"database failure", true, errors.New("private details"), 500},
 		{"unauthenticated", false, nil, 401},
@@ -219,4 +222,11 @@ func (s groupStoreStub) AddCategory(ctx context.Context, uid, id string, input m
 
 func (s groupStoreStub) DeleteCategory(ctx context.Context, uid, groupID, categoryID string) error {
 	return s.deleteCategory(ctx, uid, groupID, categoryID)
+}
+
+func (s groupStoreStub) Expenses(ctx context.Context, uid, id string) ([]models.Expense, error) {
+	return s.expenses(ctx, uid, id)
+}
+func (s groupStoreStub) CreateExpense(ctx context.Context, uid, id string, input models.ExpenseInput) (models.Expense, error) {
+	return s.createExpense(ctx, uid, id, input)
 }

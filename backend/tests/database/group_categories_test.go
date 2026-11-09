@@ -89,3 +89,52 @@ func TestGroupCategoriesMembershipAndUniqueness(t *testing.T) {
 		t.Fatalf("former member create: %v", err)
 	}
 }
+
+func TestDeleteCustomCategory(t *testing.T) {
+	_, db, ctx := emulatorStore(t)
+	groups := database.NewGroupStore(db)
+	group, err := groups.Create(ctx, "owner", models.GroupInput{Name: "Trip"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	category, err := groups.AddCategory(ctx, "owner", group.ID, models.CategoryInput{Name: "Pets", Icon: "other"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := groups.DeleteCategory(ctx, "outsider", group.ID, category.ID); !errors.Is(err, models.ErrGroupAccessForbidden) {
+		t.Fatalf("outsider deletion: %v", err)
+	}
+
+	if err := groups.DeleteCategory(ctx, "owner", group.ID, "default_food"); !errors.Is(err, models.ErrDefaultCategory) {
+		t.Fatalf("default deletion: %v", err)
+	}
+
+	if _, err := db.Collection("groups").Doc(group.ID).Update(ctx, []firestore.Update{{Path: "memberUIDs", Value: firestore.ArrayUnion("member")}}); err != nil {
+		t.Fatal(err)
+	}
+
+	for range 2 {
+		if err := groups.DeleteCategory(ctx, "member", group.ID, category.ID); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	categories, err := groups.Categories(ctx, "owner", group.ID)
+	if err != nil || len(categories) != 10 {
+		t.Fatalf("categories=%+v err=%v", categories, err)
+	}
+
+	if _, err := groups.AddCategory(ctx, "member", group.ID, models.CategoryInput{Name: "Pets", Icon: "other"}); err != nil {
+		t.Fatalf("name not reusable after deletion: %v", err)
+	}
+
+	if err := groups.Leave(ctx, "member", group.ID); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := groups.DeleteCategory(ctx, "member", group.ID, category.ID); !errors.Is(err, models.ErrGroupAccessForbidden) {
+		t.Fatalf("former member deletion: %v", err)
+	}
+}

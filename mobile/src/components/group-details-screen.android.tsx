@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { ActivityIndicator, Button, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { CreateExpenseModal } from '@/components/create-expense-modal';
+import { GroupExpenseList } from '@/components/group-expense-list';
 import { EditGroupModal } from '@/components/edit-group-modal';
 import { GroupBanner } from '@/components/group-banner';
 import { GroupMembersModal } from '@/components/group-members-modal';
@@ -10,6 +12,7 @@ import { GroupSettingsModal } from '@/components/group-settings-modal';
 import { InviteUserModal } from '@/components/invite-user-modal';
 import { ThemedText } from '@/components/themed-text';
 import { useAuthSession } from '@/hooks/use-auth-session.android';
+import { useGroupExpenses } from '@/hooks/use-group-expenses';
 import { useGroupDetails } from '@/hooks/use-group-details';
 import { useTheme } from '@/hooks/use-theme';
 import type { AuthenticatedUser } from '@/lib/api';
@@ -53,10 +56,26 @@ export default function GroupDetailsScreen() {
 
 function GroupDetails({ user, groupID }: { user: AuthenticatedUser & { uid: string }; groupID: string }) {
   const { group, loading, error, reload, applyUpdate } = useGroupDetails(user, groupID);
-  const [menu, setMenu] = useState<'members' | 'invite' | 'settings' | 'edit' | null>(null);
+  const expenses = useGroupExpenses(user, groupID);
+  const [menu, setMenu] = useState<'members' | 'invite' | 'settings' | 'edit' | 'expense' | null>(null);
 
   function closeMenu() {
     setMenu(null);
+  }
+
+  function refreshAll() {
+    reload();
+    expenses.reload();
+  }
+
+  function openExpense() {
+    expenses.clearSaveError();
+    setMenu('expense');
+  }
+
+  function closeExpense() {
+    closeMenu();
+    expenses.reload();
   }
 
   function openCategories() {
@@ -71,12 +90,14 @@ function GroupDetails({ user, groupID }: { user: AuthenticatedUser & { uid: stri
 
   return (
     <>
-      <ScrollView refreshControl={<RefreshControl refreshing={loading} onRefresh={reload} />}>
+      <ScrollView refreshControl={<RefreshControl refreshing={loading || expenses.loading} onRefresh={refreshAll} />}>
         {group && (
           <>
             <GroupBanner group={group} onBack={backToGroups}
               onPeoplePress={() => setMenu('members')} onSettingsPress={() => setMenu('settings')} />
             {group.description !== '' && <ThemedText style={styles.description}>{group.description}</ThemedText>}
+            <GroupExpenseList expenses={expenses.expenses} loading={expenses.loading} error={expenses.error}
+              saving={expenses.saving} onAdd={openExpense} onRetry={expenses.reload} />
           </>
         )}
 
@@ -94,6 +115,11 @@ function GroupDetails({ user, groupID }: { user: AuthenticatedUser & { uid: stri
           </View>
         )}
       </ScrollView>
+
+      {group && menu === 'expense' && (
+        <CreateExpenseModal user={user} group={group} saving={expenses.saving} error={expenses.saveError}
+          onSave={expenses.save} onClose={closeExpense} />
+      )}
 
       {group && menu === 'members' && (
         <GroupMembersModal user={user} group={group} onClose={closeMenu} onInvite={() => setMenu('invite')} />

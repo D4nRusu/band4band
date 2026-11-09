@@ -168,4 +168,14 @@ Open a group's gear icon, then **Edit group**. Any current member can change the
 
 Open **Group settings → Categories** to see the ten shared defaults plus custom categories for that group. Any current member can tap **Add new category**, enter a name of 1–40 characters, and select an icon. Names must differ from existing custom and default names, ignoring case and repeated whitespace. Custom categories are shared with the group's members and do not appear in other groups. Refresh the list to see categories another member added.
 
-Restart Go and reload Metro for the new endpoints and page. No APK rebuild, Firebase Console setup, or dependency installation is needed. Category editing/deletion and actual expense creation are not implemented yet. Runtime/device and emulator tests remain deferred.
+Restart Go and reload Metro for the new endpoints and page. No APK rebuild, Firebase Console setup, or dependency installation is needed. Category editing and actual expense creation are not implemented yet. Custom categories have a delete icon on the right; any current member can delete them after confirmation. Defaults cannot be deleted. Runtime/device and emulator tests remain deferred.
+
+### Expenses
+
+Open a group and tap **Add expense**. Enter its name, amount in EUR (for example `12.50` or `12,50`), choose a default/custom category, and select the current member who paid. The payer initially defaults to you; you may create an expense paid by someone else. Save adds it to the group's newest-first Expenses list. Pull down to refresh.
+
+Amounts must be positive with at most two decimal places. Go stores integer cents and derives the expense currency from its group; all groups currently use EUR, including existing groups. Category and payer display information are preserved on the expense if a category is later removed or its payer leaves. No splits, multiple-payer contributions, balances, debts, or editing/deleting expenses are implemented yet.
+
+Restart Go and reload Metro. No APK rebuild or dependency installation is needed. If saving times out or returns an uncertain result, close the form and refresh expenses before retrying: it may already have saved. Model, HTTP, emulator, and mobile amount-parsing tests are present but execution and physical-device verification remain deferred.
+
+Groups containing expenses cannot be deleted yet. Deletion will require everyone to be settled up once balance/settlement functionality exists; for now the server rejects deletion rather than risking financial history. Empty groups may still be deleted normally.

@@ -33,6 +33,9 @@ func readGroup(tx *firestore.Transaction, ref *firestore.DocumentRef) (models.Gr
 	}
 
 	group.ID = ref.ID
+	if group.Currency == "" {
+		group.Currency = models.DefaultCurrency
+	}
 	return group, nil
 }
 
