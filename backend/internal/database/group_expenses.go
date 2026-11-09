@@ -94,37 +94,25 @@ func (s *GroupStore) CreateExpense(ctx context.Context, uid, groupID string, inp
 			return models.ErrInvalidExpenseCategory
 		}
 
-		payer, err := tx.Get(s.db.Collection("users").Doc(input.PaidBy))
-		if err != nil && status.Code(err) != codes.NotFound {
+		payerName, contributions, err := s.expensePeople(tx, group, input)
+		if err != nil {
 			return err
 		}
 
-		payerName := input.PaidBy
-		if err == nil {
-			var profile models.User
-			if err := payer.DataTo(&profile); err != nil {
-				return err
-			}
-
-			if profile.Name != "" {
-				payerName = profile.Name
-			} else if profile.Username != "" {
-				payerName = profile.Username
-			}
-		}
-
 		if err := tx.Create(expenseRef, map[string]any{
-			"groupID":      groupID,
-			"name":         input.Name,
-			"categoryID":   category.ID,
-			"categoryName": category.Name,
-			"categoryIcon": category.Icon,
-			"paidBy":       input.PaidBy,
-			"payerName":    payerName,
-			"amountMinor":  input.AmountMinor,
-			"currency":     group.Currency,
-			"createdBy":    uid,
-			"createdAt":    firestore.ServerTimestamp,
+			"splitType":     "equal",
+			"contributions": contributions,
+			"groupID":       groupID,
+			"name":          input.Name,
+			"categoryID":    category.ID,
+			"categoryName":  category.Name,
+			"categoryIcon":  category.Icon,
+			"paidBy":        input.PaidBy,
+			"payerName":     payerName,
+			"amountMinor":   input.AmountMinor,
+			"currency":      group.Currency,
+			"createdBy":     uid,
+			"createdAt":     firestore.ServerTimestamp,
 		}); err != nil {
 			return err
 		}

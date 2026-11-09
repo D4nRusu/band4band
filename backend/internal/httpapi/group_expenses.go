@@ -41,7 +41,7 @@ func (h groupHandler) createExpense(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&input); err != nil {
-		writeGroupRequestError(w, "Expected name, categoryID, paidBy, and an integer amountMinor in cents.")
+		writeGroupRequestError(w, "Expected name, categoryID, paidBy, participantUIDs, and an integer amountMinor in cents.")
 		return
 	}
 
@@ -68,7 +68,7 @@ func (h groupHandler) createExpense(w http.ResponseWriter, r *http.Request) {
 func writeExpenseError(w http.ResponseWriter, err error) {
 	for _, validation := range []error{
 		models.ErrInvalidExpenseID, models.ErrInvalidExpenseName, models.ErrInvalidExpenseAmount, models.ErrInvalidExpenseCategory,
-		models.ErrInvalidExpensePayer, models.ErrUnsupportedCurrency,
+		models.ErrInvalidExpensePayer, models.ErrInvalidExpenseParticipants, models.ErrUnsupportedCurrency,
 	} {
 		if errors.Is(err, validation) {
 			writeGroupJSON(w, http.StatusBadRequest, map[string]string{"code": "invalid_expense", "message": validation.Error()})

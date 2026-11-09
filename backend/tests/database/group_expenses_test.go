@@ -33,7 +33,7 @@ func TestExpenseCreationAndHistory(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	input := models.ExpenseInput{Name: " Supplies ", CategoryID: category.ID, PaidBy: "payer", AmountMinor: 1250}
+	input := models.ExpenseInput{Name: " Supplies ", CategoryID: category.ID, PaidBy: "payer", AmountMinor: 1250, ParticipantUIDs: []string{"owner", "payer"}}
 	expense, err := groups.CreateExpense(ctx, "owner", group.ID, input)
 	if err != nil {
 		t.Fatal(err)
@@ -106,7 +106,7 @@ func TestExpenseCreationRacingGroupDeletion(t *testing.T) {
 	go func() {
 		<-start
 		_, err := groups.CreateExpense(ctx, "owner", group.ID, models.ExpenseInput{
-			Name: "Lunch", CategoryID: "default_food", PaidBy: "owner", AmountMinor: 100,
+			Name: "Lunch", CategoryID: "default_food", PaidBy: "owner", AmountMinor: 100, ParticipantUIDs: []string{"owner"},
 		})
 		createResult <- err
 	}()
@@ -154,7 +154,7 @@ func TestExpenseDeletionPreservesHistory(t *testing.T) {
 	}
 
 	expense, err := groups.CreateExpense(ctx, "owner", group.ID, models.ExpenseInput{
-		Name: "Lunch", CategoryID: "default_food", PaidBy: "owner", AmountMinor: 1250,
+		Name: "Lunch", CategoryID: "default_food", PaidBy: "owner", AmountMinor: 1250, ParticipantUIDs: []string{"owner"},
 	})
 	if err != nil {
 		t.Fatal(err)

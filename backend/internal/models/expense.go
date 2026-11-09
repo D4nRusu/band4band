@@ -13,36 +13,40 @@ const DefaultCurrency = "EUR"
 const MaxAmountMinor int64 = 9007199254740991
 
 var (
-	ErrInvalidExpenseID       = errors.New("invalid expense ID")
-	ErrInvalidExpenseName     = errors.New("expense name must contain 1–100 characters")
-	ErrInvalidExpenseAmount   = errors.New("amount must be a positive integer in cents within the supported range")
-	ErrInvalidExpenseCategory = errors.New("choose an existing category from this group")
-	ErrInvalidExpensePayer    = errors.New("the payer must be a current group member")
-	ErrUnsupportedCurrency    = errors.New("this group currency is not supported yet")
+	ErrInvalidExpenseParticipants = errors.New("select at least one contributor, without duplicates; all contributors must be current group members")
+	ErrInvalidExpenseID           = errors.New("invalid expense ID")
+	ErrInvalidExpenseName         = errors.New("expense name must contain 1–100 characters")
+	ErrInvalidExpenseAmount       = errors.New("amount must be a positive integer in cents within the supported range")
+	ErrInvalidExpenseCategory     = errors.New("choose an existing category from this group")
+	ErrInvalidExpensePayer        = errors.New("the payer must be a current group member")
+	ErrUnsupportedCurrency        = errors.New("this group currency is not supported yet")
 )
 
 type ExpenseInput struct {
-	Name        string `json:"name"`
-	CategoryID  string `json:"categoryID"`
-	PaidBy      string `json:"paidBy"`
-	AmountMinor int64  `json:"amountMinor"`
+	ParticipantUIDs []string `json:"participantUIDs"`
+	Name            string   `json:"name"`
+	CategoryID      string   `json:"categoryID"`
+	PaidBy          string   `json:"paidBy"`
+	AmountMinor     int64    `json:"amountMinor"`
 }
 
 type Expense struct {
-	DeletedAt    time.Time `json:"-" firestore:"deletedAt,omitempty"`
-	DeletedBy    string    `json:"-" firestore:"deletedBy,omitempty"`
-	ID           string    `json:"id" firestore:"-"`
-	GroupID      string    `json:"groupID" firestore:"groupID"`
-	Name         string    `json:"name" firestore:"name"`
-	CategoryID   string    `json:"categoryID" firestore:"categoryID"`
-	CategoryName string    `json:"categoryName" firestore:"categoryName"`
-	CategoryIcon string    `json:"categoryIcon" firestore:"categoryIcon"`
-	PaidBy       string    `json:"paidBy" firestore:"paidBy"`
-	PayerName    string    `json:"payerName" firestore:"payerName"`
-	AmountMinor  int64     `json:"amountMinor" firestore:"amountMinor"`
-	Currency     string    `json:"currency" firestore:"currency"`
-	CreatedBy    string    `json:"createdBy" firestore:"createdBy"`
-	CreatedAt    time.Time `json:"createdAt" firestore:"createdAt"`
+	SplitType     string                `json:"splitType,omitempty" firestore:"splitType,omitempty"`
+	Contributions []ExpenseContribution `json:"contributions,omitempty" firestore:"contributions,omitempty"`
+	DeletedAt     time.Time             `json:"-" firestore:"deletedAt,omitempty"`
+	DeletedBy     string                `json:"-" firestore:"deletedBy,omitempty"`
+	ID            string                `json:"id" firestore:"-"`
+	GroupID       string                `json:"groupID" firestore:"groupID"`
+	Name          string                `json:"name" firestore:"name"`
+	CategoryID    string                `json:"categoryID" firestore:"categoryID"`
+	CategoryName  string                `json:"categoryName" firestore:"categoryName"`
+	CategoryIcon  string                `json:"categoryIcon" firestore:"categoryIcon"`
+	PaidBy        string                `json:"paidBy" firestore:"paidBy"`
+	PayerName     string                `json:"payerName" firestore:"payerName"`
+	AmountMinor   int64                 `json:"amountMinor" firestore:"amountMinor"`
+	Currency      string                `json:"currency" firestore:"currency"`
+	CreatedBy     string                `json:"createdBy" firestore:"createdBy"`
+	CreatedAt     time.Time             `json:"createdAt" firestore:"createdAt"`
 }
 
 func (input ExpenseInput) Normalize() (ExpenseInput, error) {
@@ -61,6 +65,10 @@ func (input ExpenseInput) Normalize() (ExpenseInput, error) {
 
 	if input.PaidBy == "" {
 		return ExpenseInput{}, ErrInvalidExpensePayer
+	}
+
+	if _, err := EqualContributions(input.AmountMinor, input.ParticipantUIDs); err != nil {
+		return ExpenseInput{}, err
 	}
 
 	return input, nil

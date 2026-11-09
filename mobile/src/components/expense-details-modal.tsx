@@ -1,6 +1,7 @@
 import { SymbolView } from 'expo-symbols';
 import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
+import { ExpenseContributions } from '@/components/expense-contributions';
 import { ThemedText } from '@/components/themed-text';
 import { useDeleteExpense } from '@/hooks/use-delete-expense';
 import { useTheme } from '@/hooks/use-theme';
@@ -71,7 +72,7 @@ export function ExpenseDetailsModal({ user, expense, onClose, onDeleted }: Expen
             {deleting && <ActivityIndicator accessibilityLabel="Deleting expense" />}
             {error && <ThemedText accessibilityRole="alert">{error}</ThemedText>}
 
-            <ThemedText themeColor="textSecondary" style={styles.contributions}>No contributions</ThemedText>
+            <ExpenseContributions expense={expense} />
           </ScrollView>
         </View>
       </View>
@@ -90,5 +91,4 @@ const styles = StyleSheet.create({
   titleRow: { flexDirection: 'row', alignItems: 'baseline', gap: 12 },
   title: { flex: 1, minWidth: 0 },
   amount: { maxWidth: '45%', fontSize: 24, lineHeight: 32, fontWeight: '600', textAlign: 'right' },
-  contributions: { marginTop: 8 },
 });

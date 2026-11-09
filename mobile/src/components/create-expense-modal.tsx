@@ -4,6 +4,7 @@ import {
   ScrollView, StyleSheet, TextInput, View,
 } from 'react-native';
 
+import { ExpenseParticipants } from '@/components/expense-participants';
 import { ExpenseChoices } from '@/components/expense-choices';
 import { ThemedText } from '@/components/themed-text';
 import { useExpenseOptions } from '@/hooks/use-expense-options';
@@ -30,9 +31,18 @@ export function CreateExpenseModal({ user, group, saving, error, onSave, onClose
   const [amount, setAmount] = useState('');
   const [categoryID, setCategoryID] = useState('default_other');
   const [paidBy, setPaidBy] = useState(user.uid);
+  const [excludedUIDs, setExcludedUIDs] = useState<string[]>([]);
+  const participantUIDs = options.members.filter((member) => !excludedUIDs.includes(member.uid)).map((member) => member.uid);
   const [validationError, setValidationError] = useState<string | null>(null);
   const inputStyle = [styles.input, { color: theme.text, borderColor: theme.textSecondary }];
   const busy = saving || options.loading || options.error !== null;
+
+  function toggleParticipant(uid: string) {
+    setExcludedUIDs((previous) => previous.includes(uid)
+      ? previous.filter((excluded) => excluded !== uid)
+      : [...previous, uid]);
+    setValidationError(null);
+  }
 
   function close() {
     if (!saving) onClose();
@@ -58,8 +68,13 @@ export function CreateExpenseModal({ user, group, saving, error, onSave, onClose
       return;
     }
 
+    if (participantUIDs.length === 0) {
+      setValidationError('Select at least one contributor.');
+      return;
+    }
+
     setValidationError(null);
-    if (await onSave({ name: trimmedName, amountMinor, categoryID, paidBy })) onClose();
+    if (await onSave({ name: trimmedName, amountMinor, categoryID, paidBy, participantUIDs })) onClose();
   }
 
   return (
@@ -88,6 +103,8 @@ export function CreateExpenseModal({ user, group, saving, error, onSave, onClose
                   choices={options.categories.map((category) => ({ id: category.id, label: `${categoryIcons[category.icon].image} ${category.name}` }))} />
                 <ExpenseChoices label="Paid by" selected={paidBy} disabled={saving} onSelect={setPaidBy}
                   choices={options.members.map((member) => ({ id: member.uid, label: member.name || member.username || member.uid }))} />
+                <ExpenseParticipants members={options.members} selectedUIDs={participantUIDs}
+                  disabled={saving} onToggle={toggleParticipant} />
               </>
             )}
 

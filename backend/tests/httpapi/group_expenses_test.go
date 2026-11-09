@@ -12,7 +12,7 @@ import (
 )
 
 func TestCreateExpense(t *testing.T) {
-	const valid = `{"name":" Lunch ","categoryID":"default_food","paidBy":"other-member","amountMinor":1250}`
+	const valid = `{"name":" Lunch ","categoryID":"default_food","paidBy":"other-member","amountMinor":1250,"participantUIDs":["member","other-member"]}`
 	for _, tc := range []struct {
 		name, body    string
 		authenticated bool
@@ -23,6 +23,11 @@ func TestCreateExpense(t *testing.T) {
 		{"unauthenticated", valid, false, nil, 401},
 		{"non-member", valid, true, models.ErrGroupAccessForbidden, 403},
 		{"payer not in group", valid, true, models.ErrInvalidExpensePayer, 400},
+		{"contributor not in group", valid, true, models.ErrInvalidExpenseParticipants, 400},
+		{"missing contributors", strings.Replace(valid, `,"participantUIDs":["member","other-member"]`, "", 1), true, nil, 400},
+		{"empty contributors", strings.Replace(valid, `["member","other-member"]`, `[]`, 1), true, nil, 400},
+		{"duplicate contributors", strings.Replace(valid, `["member","other-member"]`, `["member","member"]`, 1), true, nil, 400},
+		{"client-supplied shares", strings.Replace(valid, "}", `,"contributions":[{"uid":"member","amountMinor":1}]}`, 1), true, nil, 400},
 		{"category removed", valid, true, models.ErrInvalidExpenseCategory, 400},
 		{"missing group", valid, true, models.ErrGroupNotFound, 404},
 		{"zero amount", strings.Replace(valid, "1250", "0", 1), true, nil, 400},
@@ -41,7 +46,7 @@ func TestCreateExpense(t *testing.T) {
 			called := false
 			store := groupStoreStub{createExpense: func(_ context.Context, uid, groupID string, input models.ExpenseInput) (models.Expense, error) {
 				called = true
-				if uid != "member" || groupID != "group-id" || input.Name != "Lunch" || input.PaidBy != "other-member" || input.AmountMinor != 1250 {
+				if uid != "member" || groupID != "group-id" || input.Name != "Lunch" || input.PaidBy != "other-member" || input.AmountMinor != 1250 || len(input.ParticipantUIDs) != 2 {
 					t.Fatalf("uid=%s group=%s input=%+v", uid, groupID, input)
 				}
 

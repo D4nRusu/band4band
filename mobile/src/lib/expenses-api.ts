@@ -3,13 +3,22 @@ import { categoryIcons, type CategoryIcon } from '@/lib/categories-api';
 import { GroupUnavailableError } from '@/lib/groups-api';
 
 export type ExpenseInput = {
+  participantUIDs: string[];
   name: string;
   categoryID: string;
   paidBy: string;
   amountMinor: number;
 };
 
-export type Expense = ExpenseInput & {
+export type ExpenseContribution = {
+  uid: string;
+  name: string;
+  amountMinor: number;
+};
+
+export type Expense = Omit<ExpenseInput, 'participantUIDs'> & {
+  splitType?: 'equal';
+  contributions?: ExpenseContribution[];
   id: string;
   groupID: string;
   categoryName: string;
@@ -85,5 +94,29 @@ function isExpense(value: unknown): value is Expense {
   const hasCategoryIcon = typeof expense.categoryIcon === 'string' && Object.hasOwn(categoryIcons, expense.categoryIcon);
   const hasDate = typeof expense.createdAt === 'string' && Number.isFinite(Date.parse(expense.createdAt));
 
-  return hasIdentity && hasAmount && hasCategoryIcon && hasDate && expense.currency === 'EUR';
+  return hasIdentity && hasAmount && hasCategoryIcon && hasDate && expense.currency === 'EUR'
+    && hasValidContributions(expense);
+}
+
+function hasValidContributions(expense: Record<string, unknown>): boolean {
+  if (expense.splitType === undefined && expense.contributions === undefined) return true;
+
+  if (expense.splitType !== 'equal' || !Array.isArray(expense.contributions)
+    || expense.contributions.length === 0 || !expense.contributions.every(isContribution)) return false;
+
+  const contributions = expense.contributions;
+  const uniqueUIDs = new Set(contributions.map((contribution) => contribution.uid));
+  const total = contributions.reduce((sum, contribution) => sum + BigInt(contribution.amountMinor), 0n);
+
+  return uniqueUIDs.size === contributions.length && total === BigInt(expense.amountMinor as number);
+}
+
+function isContribution(value: unknown): value is ExpenseContribution {
+  if (!value || typeof value !== 'object') return false;
+
+  const contribution = value as Record<string, unknown>;
+  return typeof contribution.uid === 'string' && contribution.uid.length > 0
+    && typeof contribution.name === 'string' && contribution.name.length > 0
+    && typeof contribution.amountMinor === 'number'
+    && Number.isSafeInteger(contribution.amountMinor) && contribution.amountMinor >= 0;
 }

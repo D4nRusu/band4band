@@ -8,7 +8,7 @@ import (
 )
 
 func TestExpenseValidation(t *testing.T) {
-	valid := models.ExpenseInput{Name: " Lunch ", CategoryID: "default_food", PaidBy: "payer", AmountMinor: 1250}
+	valid := models.ExpenseInput{Name: " Lunch ", CategoryID: "default_food", PaidBy: "payer", AmountMinor: 1250, ParticipantUIDs: []string{"payer"}}
 	normalized, err := valid.Normalize()
 	if err != nil || normalized.Name != "Lunch" || normalized.AmountMinor != 1250 {
 		t.Fatalf("normalized=%+v err=%v", normalized, err)
@@ -24,6 +24,8 @@ func TestExpenseValidation(t *testing.T) {
 		{"negative amount", func(input *models.ExpenseInput) { input.AmountMinor = -1 }},
 		{"unsafe JSON integer", func(input *models.ExpenseInput) { input.AmountMinor = models.MaxAmountMinor + 1 }},
 		{"missing payer", func(input *models.ExpenseInput) { input.PaidBy = "" }},
+		{"missing contributors", func(input *models.ExpenseInput) { input.ParticipantUIDs = nil }},
+		{"duplicate contributors", func(input *models.ExpenseInput) { input.ParticipantUIDs = []string{"payer", "payer"} }},
 		{"missing category", func(input *models.ExpenseInput) { input.CategoryID = "" }},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
