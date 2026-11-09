@@ -107,3 +107,45 @@ func TestExpenseListAuthorization(t *testing.T) {
 		})
 	}
 }
+
+func TestDeleteExpenseEndpoint(t *testing.T) {
+	for _, tc := range []struct {
+		name          string
+		authenticated bool
+		err           error
+		status        int
+	}{
+		{"any current member", true, nil, 204},
+		{"unauthenticated", false, nil, 401},
+		{"non-member", true, models.ErrGroupAccessForbidden, 403},
+		{"missing group", true, models.ErrGroupNotFound, 404},
+		{"invalid expense ID", true, models.ErrInvalidExpenseID, 400},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			called := false
+			store := groupStoreStub{deleteExpense: func(_ context.Context, uid, groupID, expenseID string) error {
+				called = true
+				if uid != "ordinary-member" || groupID != "group-id" || expenseID != "expense-id" {
+					t.Fatalf("uid=%s groupID=%s expenseID=%s", uid, groupID, expenseID)
+				}
+
+				return tc.err
+			}}
+			verifier := verifierFunc(func(context.Context, string) (*auth.Token, error) { return &auth.Token{UID: "ordinary-member"}, nil })
+			r := httptest.NewRequest("DELETE", "/api/groups/group-id/expenses/expense-id?uid=attacker", nil)
+			if tc.authenticated {
+				r.Header.Set("Authorization", "Bearer token")
+			}
+
+			w := httptest.NewRecorder()
+			httpapi.NewRouter(verifier, nil, store, nil).ServeHTTP(w, r)
+			if w.Code != tc.status || called != tc.authenticated {
+				t.Fatalf("status=%d called=%v", w.Code, called)
+			}
+
+			if tc.status == 204 && (w.Body.Len() != 0 || w.Header().Get("Cache-Control") != "no-store") {
+				t.Fatalf("unexpected response: %s", w.Body.String())
+			}
+		})
+	}
+}

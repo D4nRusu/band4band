@@ -23,6 +23,7 @@ func NewRouter(verifier TokenVerifier, users UserStore, groups GroupStore, invit
 	mux.Handle("DELETE /api/groups/{groupID}/categories/{categoryID}", Authenticate(verifier, http.HandlerFunc(groupsHandler.deleteCategory)))
 	mux.Handle("POST /api/groups/{groupID}/categories", Authenticate(verifier, http.HandlerFunc(groupsHandler.addCategory)))
 	mux.Handle("GET /api/groups/{groupID}/expenses", Authenticate(verifier, http.HandlerFunc(groupsHandler.expenses)))
+	mux.Handle("DELETE /api/groups/{groupID}/expenses/{expenseID}", Authenticate(verifier, http.HandlerFunc(groupsHandler.deleteExpense)))
 	mux.Handle("POST /api/groups/{groupID}/expenses", Authenticate(verifier, http.HandlerFunc(groupsHandler.createExpense)))
 	mux.Handle("GET /api/groups/{groupID}/members", Authenticate(verifier, http.HandlerFunc(groupsHandler.members)))
 	mux.Handle("PUT /api/groups/{groupID}", Authenticate(verifier, http.HandlerFunc(groupsHandler.updateGroup)))

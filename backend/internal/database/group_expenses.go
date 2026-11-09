@@ -34,6 +34,10 @@ func (s *GroupStore) Expenses(ctx context.Context, uid, groupID string) ([]model
 				return err
 			}
 
+			if !expense.DeletedAt.IsZero() {
+				continue
+			}
+
 			expense.ID = snapshot.Ref.ID
 			expenses = append(expenses, expense)
 		}
@@ -159,4 +163,44 @@ func expenseCategory(group models.Group, id string) (models.Category, bool) {
 
 	category, ok := group.CustomCategories[id]
 	return category, ok
+}
+
+func (s *GroupStore) DeleteExpense(ctx context.Context, uid, groupID, expenseID string) error {
+	if !validDocumentID(groupID) {
+		return models.ErrInvalidGroupID
+	}
+
+	if !validDocumentID(expenseID) {
+		return models.ErrInvalidExpenseID
+	}
+
+	return s.db.RunTransaction(ctx, func(ctx context.Context, tx *firestore.Transaction) error {
+		if _, err := s.readMemberGroup(tx, uid, groupID); err != nil {
+			return err
+		}
+
+		ref := s.db.Collection("groups").Doc(groupID).Collection("expenses").Doc(expenseID)
+		snapshot, err := tx.Get(ref)
+		if status.Code(err) == codes.NotFound {
+			return nil
+		}
+
+		if err != nil {
+			return err
+		}
+
+		var expense models.Expense
+		if err := snapshot.DataTo(&expense); err != nil {
+			return err
+		}
+
+		if !expense.DeletedAt.IsZero() {
+			return nil
+		}
+
+		return tx.Update(ref, []firestore.Update{
+			{Path: "deletedAt", Value: firestore.ServerTimestamp},
+			{Path: "deletedBy", Value: uid},
+		})
+	})
 }

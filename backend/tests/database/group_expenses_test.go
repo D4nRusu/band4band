@@ -138,3 +138,97 @@ func TestExpenseCreationRacingGroupDeletion(t *testing.T) {
 		t.Fatalf("orphan expenses=%d err=%v", len(snapshots), err)
 	}
 }
+
+func TestExpenseDeletionPreservesHistory(t *testing.T) {
+	_, db, ctx := emulatorStore(t)
+	groups := database.NewGroupStore(db)
+	group, err := groups.Create(ctx, "owner", models.GroupInput{Name: "Trip"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := db.Collection("groups").Doc(group.ID).Update(ctx, []firestore.Update{
+		{Path: "memberUIDs", Value: firestore.ArrayUnion("member", "other-member")},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	expense, err := groups.CreateExpense(ctx, "owner", group.ID, models.ExpenseInput{
+		Name: "Lunch", CategoryID: "default_food", PaidBy: "owner", AmountMinor: 1250,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := groups.DeleteExpense(ctx, "outsider", group.ID, expense.ID); !errors.Is(err, models.ErrGroupAccessForbidden) {
+		t.Fatalf("outsider deletion=%v", err)
+	}
+
+	otherGroup, err := groups.Create(ctx, "member", models.GroupInput{Name: "Other"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := groups.DeleteExpense(ctx, "member", otherGroup.ID, expense.ID); err != nil {
+		t.Fatal(err)
+	}
+
+	visible, err := groups.Expenses(ctx, "owner", group.ID)
+	if err != nil || len(visible) != 1 {
+		t.Fatalf("cross-group delete changed expense: %+v %v", visible, err)
+	}
+
+	if err := groups.DeleteExpense(ctx, "member", group.ID, expense.ID); err != nil {
+		t.Fatal(err)
+	}
+
+	ref := db.Collection("groups").Doc(group.ID).Collection("expenses").Doc(expense.ID)
+	snapshot, err := ref.Get(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var deleted models.Expense
+	if err := snapshot.DataTo(&deleted); err != nil {
+		t.Fatal(err)
+	}
+
+	if deleted.DeletedBy != "member" || deleted.DeletedAt.IsZero() || deleted.Name != expense.Name || deleted.AmountMinor != 1250 || deleted.CreatedBy != "owner" || !deleted.CreatedAt.Equal(expense.CreatedAt) {
+		t.Fatalf("audit record=%+v", deleted)
+	}
+
+	if err := groups.DeleteExpense(ctx, "other-member", group.ID, expense.ID); err != nil {
+		t.Fatal(err)
+	}
+
+	repeated, err := ref.Get(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var afterRetry models.Expense
+	if err := repeated.DataTo(&afterRetry); err != nil {
+		t.Fatal(err)
+	}
+
+	if afterRetry.DeletedBy != deleted.DeletedBy || !afterRetry.DeletedAt.Equal(deleted.DeletedAt) {
+		t.Fatal("retry overwrote original deletion metadata")
+	}
+
+	visible, err = groups.Expenses(ctx, "owner", group.ID)
+	if err != nil || len(visible) != 0 {
+		t.Fatalf("deleted expense still visible=%+v err=%v", visible, err)
+	}
+
+	if err := groups.Delete(ctx, "owner", group.ID); !errors.Is(err, models.ErrGroupHasExpenses) {
+		t.Fatalf("history group deletion=%v", err)
+	}
+
+	if err := groups.Leave(ctx, "member", group.ID); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := groups.DeleteExpense(ctx, "member", group.ID, expense.ID); !errors.Is(err, models.ErrGroupAccessForbidden) {
+		t.Fatalf("former member deletion=%v", err)
+	}
+}

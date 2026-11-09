@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { ActivityIndicator, Button, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { ExpenseDetailsModal } from '@/components/expense-details-modal';
 import { CreateExpenseModal } from '@/components/create-expense-modal';
 import { GroupExpenseList } from '@/components/group-expense-list';
 import { EditGroupModal } from '@/components/edit-group-modal';
@@ -17,6 +18,7 @@ import { useGroupDetails } from '@/hooks/use-group-details';
 import { useTheme } from '@/hooks/use-theme';
 import type { AuthenticatedUser } from '@/lib/api';
 import type { Group } from '@/lib/groups-api';
+import type { Expense } from '@/lib/expenses-api';
 
 function backToGroups() {
   if (router.canGoBack()) router.back();
@@ -57,15 +59,28 @@ export default function GroupDetailsScreen() {
 function GroupDetails({ user, groupID }: { user: AuthenticatedUser & { uid: string }; groupID: string }) {
   const { group, loading, error, reload, applyUpdate } = useGroupDetails(user, groupID);
   const expenses = useGroupExpenses(user, groupID);
-  const [menu, setMenu] = useState<'members' | 'invite' | 'settings' | 'edit' | 'expense' | null>(null);
+  const [menu, setMenu] = useState<'members' | 'invite' | 'settings' | 'edit' | 'expense' | 'expense-details' | null>(null);
+
+  const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
 
   function closeMenu() {
+    setSelectedExpense(null);
     setMenu(null);
   }
 
   function refreshAll() {
     reload();
     expenses.reload();
+  }
+
+  function showExpenseDetails(expense: Expense) {
+    setSelectedExpense(expense);
+    setMenu('expense-details');
+  }
+
+  function deletedExpense() {
+    if (selectedExpense) expenses.removeFromList(selectedExpense.id);
+    closeMenu();
   }
 
   function openExpense() {
@@ -96,7 +111,7 @@ function GroupDetails({ user, groupID }: { user: AuthenticatedUser & { uid: stri
             <GroupBanner group={group} onBack={backToGroups}
               onPeoplePress={() => setMenu('members')} onSettingsPress={() => setMenu('settings')} />
             <GroupExpenseList expenses={expenses.expenses} loading={expenses.loading} error={expenses.error}
-              saving={expenses.saving} onAdd={openExpense} onRetry={expenses.reload} />
+              saving={expenses.saving} onAdd={openExpense} onOpen={showExpenseDetails} onRetry={expenses.reload} />
           </>
         )}
 
@@ -114,6 +129,11 @@ function GroupDetails({ user, groupID }: { user: AuthenticatedUser & { uid: stri
           </View>
         )}
       </ScrollView>
+
+      {group && selectedExpense && menu === 'expense-details' && (
+        <ExpenseDetailsModal key={selectedExpense.id} user={user} expense={selectedExpense}
+          onClose={closeMenu} onDeleted={deletedExpense} />
+      )}
 
       {group && menu === 'expense' && (
         <CreateExpenseModal user={user} group={group} saving={expenses.saving} error={expenses.saveError}

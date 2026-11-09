@@ -102,9 +102,15 @@ export function useGroupExpenses(user: AuthenticatedUser, groupID: string) {
     }
   }
 
+  function removeFromList(expenseID: string) {
+    cancelLoad.current?.();
+    setLoading(false);
+    setExpenses((previous) => previous.filter((expense) => expense.id !== expenseID));
+  }
+
   function clearSaveError() {
     setSaveError(null);
   }
 
-  return { expenses, loading, error, saving, saveError, reload, save, clearSaveError };
+  return { expenses, loading, error, saving, saveError, reload, save, clearSaveError, removeFromList };
 }

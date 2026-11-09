@@ -15,6 +15,7 @@ import (
 )
 
 type groupStoreStub struct {
+	deleteExpense  func(context.Context, string, string, string) error
 	expenses       func(context.Context, string, string) ([]models.Expense, error)
 	createExpense  func(context.Context, string, string, models.ExpenseInput) (models.Expense, error)
 	deleteCategory func(context.Context, string, string, string) error
@@ -229,4 +230,8 @@ func (s groupStoreStub) Expenses(ctx context.Context, uid, id string) ([]models.
 }
 func (s groupStoreStub) CreateExpense(ctx context.Context, uid, id string, input models.ExpenseInput) (models.Expense, error) {
 	return s.createExpense(ctx, uid, id, input)
+}
+
+func (s groupStoreStub) DeleteExpense(ctx context.Context, uid, groupID, expenseID string) error {
+	return s.deleteExpense(ctx, uid, groupID, expenseID)
 }

@@ -13,6 +13,7 @@ const DefaultCurrency = "EUR"
 const MaxAmountMinor int64 = 9007199254740991
 
 var (
+	ErrInvalidExpenseID       = errors.New("invalid expense ID")
 	ErrInvalidExpenseName     = errors.New("expense name must contain 1–100 characters")
 	ErrInvalidExpenseAmount   = errors.New("amount must be a positive integer in cents within the supported range")
 	ErrInvalidExpenseCategory = errors.New("choose an existing category from this group")
@@ -28,6 +29,8 @@ type ExpenseInput struct {
 }
 
 type Expense struct {
+	DeletedAt    time.Time `json:"-" firestore:"deletedAt,omitempty"`
+	DeletedBy    string    `json:"-" firestore:"deletedBy,omitempty"`
 	ID           string    `json:"id" firestore:"-"`
 	GroupID      string    `json:"groupID" firestore:"groupID"`
 	Name         string    `json:"name" firestore:"name"`

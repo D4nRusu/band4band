@@ -11,10 +11,11 @@ type GroupExpenseListProps = {
   error: string | null;
   saving: boolean;
   onAdd: () => void;
+  onOpen: (expense: Expense) => void;
   onRetry: () => void;
 };
 
-export function GroupExpenseList({ expenses, loading, error, saving, onAdd, onRetry }: GroupExpenseListProps) {
+export function GroupExpenseList({ expenses, loading, error, saving, onAdd, onOpen, onRetry }: GroupExpenseListProps) {
   const theme = useTheme();
   const addDisabled = loading || saving || error !== null;
 
@@ -37,7 +38,7 @@ export function GroupExpenseList({ expenses, loading, error, saving, onAdd, onRe
       {!loading && !error && expenses.length === 0 && <ThemedText>No expenses yet. Add the first one above.</ThemedText>}
 
       {expenses.map((expense) => (
-        <ExpenseCard key={expense.id} expense={expense} />
+        <ExpenseCard key={expense.id} expense={expense} onOpen={onOpen} disabled={saving} />
       ))}
     </View>
   );

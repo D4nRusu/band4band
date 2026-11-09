@@ -67,7 +67,7 @@ func (h groupHandler) createExpense(w http.ResponseWriter, r *http.Request) {
 
 func writeExpenseError(w http.ResponseWriter, err error) {
 	for _, validation := range []error{
-		models.ErrInvalidExpenseName, models.ErrInvalidExpenseAmount, models.ErrInvalidExpenseCategory,
+		models.ErrInvalidExpenseID, models.ErrInvalidExpenseName, models.ErrInvalidExpenseAmount, models.ErrInvalidExpenseCategory,
 		models.ErrInvalidExpensePayer, models.ErrUnsupportedCurrency,
 	} {
 		if errors.Is(err, validation) {
@@ -77,4 +77,20 @@ func writeExpenseError(w http.ResponseWriter, err error) {
 	}
 
 	writeGroupError(w, err)
+}
+
+func (h groupHandler) deleteExpense(w http.ResponseWriter, r *http.Request) {
+	uid, ok := UIDFromContext(r.Context())
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	if err := h.groups.DeleteExpense(r.Context(), uid, r.PathValue("groupID"), r.PathValue("expenseID")); err != nil {
+		writeExpenseError(w, err)
+		return
+	}
+
+	w.Header().Set("Cache-Control", "no-store")
+	w.WriteHeader(http.StatusNoContent)
 }

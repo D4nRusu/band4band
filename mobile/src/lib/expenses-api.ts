@@ -44,6 +44,16 @@ export async function createExpense(
   return body;
 }
 
+export async function deleteExpense(
+  user: AuthenticatedUser, groupID: string, expenseID: string, signal?: AbortSignal,
+): Promise<void> {
+  const response = await authenticatedRequest(user,
+    `/api/groups/${encodeURIComponent(groupID)}/expenses/${encodeURIComponent(expenseID)}`, {
+      method: 'DELETE', signal,
+    });
+  await checkResponse(response);
+}
+
 async function checkResponse(response: Response) {
   if (response.status === 403 || response.status === 404) {
     throw new GroupUnavailableError('This group is no longer available.');
