@@ -16,10 +16,20 @@ export function ExpenseCard({ expense, onOpen, disabled }: ExpenseCardProps) {
   const theme = useTheme();
   const date = new Date(expense.createdAt);
   const month = date.toLocaleString('en-US', { month: 'short' });
+  const position = expense.viewerPosition;
+  const hasMoney = position.kind === 'lent' || position.kind === 'borrowed';
+  const moneyColor = position.kind === 'lent' ? theme.moneyReceivable : theme.moneyOwed;
+
+  let subtitle = `Paid by ${expense.payerName}`;
+  if (position.kind === 'not_involved') subtitle = 'You are not part of this expense';
+  if (position.kind === 'unallocated') subtitle = 'Contributions not set';
+
+  const positionLabel = position.kind === 'lent' ? 'You lent' : 'You borrowed';
+  const accessibleMoney = hasMoney ? `${positionLabel} ${formatExpenseAmount(position.amountMinor, expense.currency)}` : '';
 
   return (
     <Pressable onPress={() => onOpen(expense)} disabled={disabled} accessibilityRole="button"
-      accessibilityLabel={`View expense ${expense.name}`} accessibilityState={{ disabled }}
+      accessibilityLabel={`View expense ${expense.name}, ${expense.categoryName}, ${month} ${date.getDate()}, ${subtitle}${accessibleMoney ? `, ${accessibleMoney}` : ''}`} accessibilityState={{ disabled }}
       style={({ pressed }) => [styles.card, { backgroundColor: theme.backgroundElement }, pressed && styles.pressed]}>
       <View style={styles.date}>
         <ThemedText type="small" themeColor="textSecondary">{month}.</ThemedText>
@@ -31,12 +41,22 @@ export function ExpenseCard({ expense, onOpen, disabled }: ExpenseCardProps) {
 
       <View style={styles.details}>
         <ThemedText style={styles.title} numberOfLines={1}>{expense.name}</ThemedText>
-        <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>Paid by {expense.payerName}</ThemedText>
+        <ThemedText type="small" themeColor="textSecondary">{subtitle}</ThemedText>
       </View>
 
-      <ThemedText style={styles.amount} numberOfLines={1} adjustsFontSizeToFit>
-        {formatExpenseAmount(expense.amountMinor, expense.currency)}
-      </ThemedText>
+      {hasMoney && (
+        <View style={styles.position}>
+          <ThemedText type="small" style={[styles.positionLabel, { color: moneyColor }]}>
+            {positionLabel}
+          </ThemedText>
+          <ThemedText style={[styles.amount, { color: moneyColor }]} numberOfLines={1} adjustsFontSizeToFit>
+            {formatExpenseAmount(position.amountMinor, expense.currency)}
+          </ThemedText>
+        </View>
+      )}
+      {position.kind === 'none' && (
+        <ThemedText type="small" themeColor="textSecondary" style={styles.position}>No amount owed</ThemedText>
+      )}
     </Pressable>
   );
 }
@@ -48,5 +68,7 @@ const styles = StyleSheet.create({
   icon: { width: 32, fontSize: 28, lineHeight: 36, textAlign: 'center' },
   details: { flex: 1, minWidth: 0, gap: 2 },
   title: { fontSize: 18, lineHeight: 24, fontWeight: '600' },
-  amount: { maxWidth: '35%', fontSize: 16, lineHeight: 24, fontWeight: '600', textAlign: 'right' },
+  position: { maxWidth: '38%', flexShrink: 1, alignItems: 'flex-end' },
+  positionLabel: { fontSize: 12, lineHeight: 18, textAlign: 'right' },
+  amount: { maxWidth: '100%', fontSize: 16, lineHeight: 24, fontWeight: '600', textAlign: 'right' },
 });

@@ -187,3 +187,11 @@ Tap an expense to open its detail menu, showing its name and total on one row, a
 When adding an expense, all current group members are selected as contributors by default, including the payer. Tap the checkboxes to exclude anyone. The payer and contributors are independent: one member can pay entirely for others, or just for one other person. At least one contributor must remain selected. Go calculates the equal shares, stores them in cents, and returns them for the detail menu. The payer's portion is labeled **Own share**; others are labeled **Owes**.
 
 For leftover cents, Go sorts selected Firebase UIDs and gives one extra cent to the first selected UID(s) until the remainder is exhausted. For example, €10 across usr1, usr2, usr3 becomes €3.34, €3.33, €3.33. Saved shares never change when someone later leaves. Existing expenses without contributions are left untouched. Restart Go and reload Metro together because creating a new expense now requires the participant selection; no APK rebuild is required.
+
+### Your position on expense cards
+
+Expense cards now show your own position, not the total: **You lent** in green for money others owe you, or **You borrowed** in orange for your share owed to the payer. For a €50 expense with the payer's own €10 share and four other €10 shares, the payer sees €40 lent and each other contributor sees €10 borrowed. Excluding the payer makes the whole total receivable for that payer.
+
+If you neither paid nor contribute, the card says **You are not part of this expense** and hides payer/amount information. Zero positions show **No amount owed**; older expenses without allocations show **Contributions not set**. Open details to see the expense total. Contribution amounts there are green only when owed to you, orange only when you owe them, and otherwise neutral. These are per-expense positions before future settlements or group-level netting.
+
+Restart Go and reload Metro together for the new viewer-position response. No APK rebuild or dependency installation is needed.

@@ -5,7 +5,7 @@ import { useTheme } from '@/hooks/use-theme';
 import type { Expense } from '@/lib/expenses-api';
 import { formatExpenseAmount } from '@/lib/money';
 
-export function ExpenseContributions({ expense }: { expense: Expense }) {
+export function ExpenseContributions({ expense, viewerUID }: { expense: Expense; viewerUID: string }) {
   const theme = useTheme();
   const contributions = expense.contributions ?? [];
 
@@ -15,17 +15,25 @@ export function ExpenseContributions({ expense }: { expense: Expense }) {
 
   return (
     <View style={styles.list}>
-      {contributions.map((contribution) => (
-        <View key={contribution.uid} style={[styles.row, { backgroundColor: theme.backgroundElement }]}>
-          <View style={styles.person}>
-            <ThemedText>{contribution.name}</ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">
-              {contribution.uid === expense.paidBy ? 'Own share' : 'Owes'}
-            </ThemedText>
+      {contributions.map((contribution) => {
+        let moneyColor = theme.text as string;
+        if (contribution.amountMinor > 0) {
+          if (viewerUID === contribution.uid) moneyColor = theme.moneyOwed;
+          else if (viewerUID === expense.paidBy) moneyColor = theme.moneyReceivable;
+        }
+
+        return (
+          <View key={contribution.uid} style={[styles.row, { backgroundColor: theme.backgroundElement }]}>
+            <View style={styles.person}>
+              <ThemedText>{contribution.name}</ThemedText>
+              <ThemedText type="small" themeColor="textSecondary">
+                {contribution.uid === expense.paidBy ? 'Own share' : 'Owes'}
+              </ThemedText>
+            </View>
+            <ThemedText type="smallBold" style={{ color: moneyColor }}>{formatExpenseAmount(contribution.amountMinor, expense.currency)}</ThemedText>
           </View>
-          <ThemedText type="smallBold">{formatExpenseAmount(contribution.amountMinor, expense.currency)}</ThemedText>
-        </View>
-      ))}
+        );
+      })}
     </View>
   );
 }

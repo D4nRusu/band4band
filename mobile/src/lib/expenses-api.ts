@@ -18,7 +18,13 @@ export type ExpenseContribution = {
   amountMinor: number;
 };
 
+export type ExpensePosition = {
+  kind: 'lent' | 'borrowed' | 'none' | 'not_involved' | 'unallocated';
+  amountMinor: number;
+};
+
 export type Expense = Omit<ExpenseInput, 'participantUIDs'> & {
+  viewerPosition: ExpensePosition;
   splitType?: 'equal';
   contributions?: ExpenseContribution[];
   id: string;
@@ -97,7 +103,7 @@ function isExpense(value: unknown): value is Expense {
   const hasDate = typeof expense.createdAt === 'string' && Number.isFinite(Date.parse(expense.createdAt));
 
   return hasIdentity && hasAmount && hasCategoryIcon && hasDate && expense.currency === 'EUR'
-    && hasValidContributions(expense);
+    && hasValidContributions(expense) && hasValidPosition(expense);
 }
 
 function hasValidContributions(expense: Record<string, unknown>): boolean {
@@ -121,4 +127,17 @@ function isContribution(value: unknown): value is ExpenseContribution {
     && typeof contribution.name === 'string' && contribution.name.length > 0
     && typeof contribution.amountMinor === 'number'
     && Number.isSafeInteger(contribution.amountMinor) && contribution.amountMinor >= 0;
+}
+
+function hasValidPosition(expense: Record<string, unknown>): boolean {
+  const position = expense.viewerPosition;
+  if (!position || typeof position !== 'object') return false;
+
+  const value = position as Record<string, unknown>;
+  if (typeof value.amountMinor !== 'number' || !Number.isSafeInteger(value.amountMinor)
+    || value.amountMinor < 0 || value.amountMinor > (expense.amountMinor as number)) return false;
+
+  if (value.kind === 'lent' || value.kind === 'borrowed') return value.amountMinor > 0;
+
+  return ['none', 'not_involved', 'unallocated'].includes(value.kind as string) && value.amountMinor === 0;
 }

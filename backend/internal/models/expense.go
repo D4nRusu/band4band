@@ -31,22 +31,23 @@ type ExpenseInput struct {
 }
 
 type Expense struct {
-	SplitType     string                `json:"splitType,omitempty" firestore:"splitType,omitempty"`
-	Contributions []ExpenseContribution `json:"contributions,omitempty" firestore:"contributions,omitempty"`
-	DeletedAt     time.Time             `json:"-" firestore:"deletedAt,omitempty"`
-	DeletedBy     string                `json:"-" firestore:"deletedBy,omitempty"`
-	ID            string                `json:"id" firestore:"-"`
-	GroupID       string                `json:"groupID" firestore:"groupID"`
-	Name          string                `json:"name" firestore:"name"`
-	CategoryID    string                `json:"categoryID" firestore:"categoryID"`
-	CategoryName  string                `json:"categoryName" firestore:"categoryName"`
-	CategoryIcon  string                `json:"categoryIcon" firestore:"categoryIcon"`
-	PaidBy        string                `json:"paidBy" firestore:"paidBy"`
-	PayerName     string                `json:"payerName" firestore:"payerName"`
-	AmountMinor   int64                 `json:"amountMinor" firestore:"amountMinor"`
-	Currency      string                `json:"currency" firestore:"currency"`
-	CreatedBy     string                `json:"createdBy" firestore:"createdBy"`
-	CreatedAt     time.Time             `json:"createdAt" firestore:"createdAt"`
+	ViewerPosition ExpensePosition       `json:"viewerPosition" firestore:"-"`
+	SplitType      string                `json:"splitType,omitempty" firestore:"splitType,omitempty"`
+	Contributions  []ExpenseContribution `json:"contributions,omitempty" firestore:"contributions,omitempty"`
+	DeletedAt      time.Time             `json:"-" firestore:"deletedAt,omitempty"`
+	DeletedBy      string                `json:"-" firestore:"deletedBy,omitempty"`
+	ID             string                `json:"id" firestore:"-"`
+	GroupID        string                `json:"groupID" firestore:"groupID"`
+	Name           string                `json:"name" firestore:"name"`
+	CategoryID     string                `json:"categoryID" firestore:"categoryID"`
+	CategoryName   string                `json:"categoryName" firestore:"categoryName"`
+	CategoryIcon   string                `json:"categoryIcon" firestore:"categoryIcon"`
+	PaidBy         string                `json:"paidBy" firestore:"paidBy"`
+	PayerName      string                `json:"payerName" firestore:"payerName"`
+	AmountMinor    int64                 `json:"amountMinor" firestore:"amountMinor"`
+	Currency       string                `json:"currency" firestore:"currency"`
+	CreatedBy      string                `json:"createdBy" firestore:"createdBy"`
+	CreatedAt      time.Time             `json:"createdAt" firestore:"createdAt"`
 }
 
 func (input ExpenseInput) Normalize() (ExpenseInput, error) {

@@ -12,7 +12,7 @@ import type { Expense } from '@/lib/expenses-api';
 import { formatExpenseAmount } from '@/lib/money';
 
 type ExpenseDetailsModalProps = {
-  user: AuthenticatedUser;
+  user: AuthenticatedUser & { uid: string };
   expense: Expense;
   onClose: () => void;
   onDeleted: () => void;
@@ -73,7 +73,7 @@ export function ExpenseDetailsModal({ user, expense, onClose, onDeleted }: Expen
             {deleting && <ActivityIndicator accessibilityLabel="Deleting expense" />}
             {error && <ErrorMessage message={error} />}
 
-            <ExpenseContributions expense={expense} />
+            <ExpenseContributions expense={expense} viewerUID={user.uid} />
           </ScrollView>
         </View>
       </View>

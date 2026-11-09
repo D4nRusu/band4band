@@ -26,6 +26,10 @@ func (h groupHandler) expenses(w http.ResponseWriter, r *http.Request) {
 		expenses = []models.Expense{}
 	}
 
+	for i := range expenses {
+		expenses[i].ViewerPosition = expenses[i].PositionFor(uid)
+	}
+
 	writeGroupJSON(w, http.StatusOK, expenses)
 }
 
@@ -62,6 +66,7 @@ func (h groupHandler) createExpense(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	expense.ViewerPosition = expense.PositionFor(uid)
 	writeGroupJSON(w, http.StatusCreated, expense)
 }
 

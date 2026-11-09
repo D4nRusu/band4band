@@ -2,6 +2,7 @@ package httpapi_test
 
 import (
 	"context"
+	"encoding/json"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -150,6 +151,52 @@ func TestDeleteExpenseEndpoint(t *testing.T) {
 
 			if tc.status == 204 && (w.Body.Len() != 0 || w.Header().Get("Cache-Control") != "no-store") {
 				t.Fatalf("unexpected response: %s", w.Body.String())
+			}
+		})
+	}
+}
+
+func TestExpenseListPositionUsesVerifiedViewer(t *testing.T) {
+	for _, tc := range []struct {
+		uid, kind string
+		amount    int64
+	}{
+		{"payer", "lent", 4000},
+		{"participant", "borrowed", 1000},
+		{"creator", "not_involved", 0},
+	} {
+		t.Run(tc.uid, func(t *testing.T) {
+			verifier := verifierFunc(func(context.Context, string) (*auth.Token, error) { return &auth.Token{UID: tc.uid}, nil })
+			store := groupStoreStub{expenses: func(_ context.Context, uid, id string) ([]models.Expense, error) {
+				if uid != tc.uid {
+					t.Fatalf("uid=%s", uid)
+				}
+
+				return []models.Expense{{PaidBy: "payer", CreatedBy: "creator", AmountMinor: 5000,
+					Contributions: []models.ExpenseContribution{
+						{UID: "payer", AmountMinor: 1000}, {UID: "participant", AmountMinor: 1000}, {UID: "other", AmountMinor: 3000},
+					},
+				}}, nil
+			}}
+			r := httptest.NewRequest("GET", "/api/groups/group-id/expenses?uid=payer", nil)
+			r.Header.Set("Authorization", "Bearer token")
+			w := httptest.NewRecorder()
+			httpapi.NewRouter(verifier, nil, store, nil).ServeHTTP(w, r)
+			if w.Code != 200 {
+				t.Fatalf("status=%d", w.Code)
+			}
+
+			var expenses []models.Expense
+			if err := json.Unmarshal(w.Body.Bytes(), &expenses); err != nil {
+				t.Fatal(err)
+			}
+
+			if len(expenses) != 1 || expenses[0].ViewerPosition.Kind != tc.kind || expenses[0].ViewerPosition.AmountMinor != tc.amount {
+				t.Fatalf("expenses=%+v", expenses)
+			}
+
+			if w.Header().Get("Cache-Control") != "no-store" {
+				t.Fatal("viewer response must not be cached")
 			}
 		})
 	}
