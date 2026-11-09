@@ -10,6 +10,12 @@ import (
 )
 
 type GroupStore interface {
+	DeleteExpense(context.Context, string, string, string) error
+	Expenses(context.Context, string, string) ([]models.Expense, error)
+	CreateExpense(context.Context, string, string, models.ExpenseInput) (models.Expense, error)
+	DeleteCategory(context.Context, string, string, string) error
+	Categories(context.Context, string, string) ([]models.Category, error)
+	AddCategory(context.Context, string, string, models.CategoryInput) (models.Category, error)
 	Update(context.Context, string, string, models.GroupInput) (models.Group, error)
 	ListForUser(context.Context, string) ([]models.Group, error)
 	Create(context.Context, string, models.GroupInput) (models.Group, error)

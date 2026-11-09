@@ -163,3 +163,35 @@ Restart Go and reload Metro to use these routes; no new APK is needed. Physical-
 ### Editing groups
 
 Open a group's gear icon, then **Edit group**. Any current member can change the name and description. Save changes returns to settings and updates the group page. The image button is a disabled placeholder; image uploads are not available yet. Restart Go for the new update endpoint and reload Metro; no APK rebuild is required.
+
+### Group categories
+
+Open **Group settings → Categories** to see the ten shared defaults plus custom categories for that group. Any current member can tap **Add new category**, enter a name of 1–40 characters, and select an icon. Names must differ from existing custom and default names, ignoring case and repeated whitespace. Custom categories are shared with the group's members and do not appear in other groups. Refresh the list to see categories another member added.
+
+Restart Go and reload Metro for the new endpoints and page. No APK rebuild, Firebase Console setup, or dependency installation is needed. Category editing and actual expense creation are not implemented yet. Custom categories have a delete icon on the right; any current member can delete them after confirmation. Defaults cannot be deleted. Runtime/device and emulator tests remain deferred.
+
+### Expenses
+
+Open a group and tap **Add expense**. Enter its name, amount in EUR (for example `12.50` or `12,50`), choose a default/custom category, and select the current member who paid. The payer initially defaults to you; you may create an expense paid by someone else. Save adds it to the group's newest-first Expenses list. Pull down to refresh.
+
+Amounts must be positive with at most two decimal places. Go stores integer cents and derives the expense currency from its group; all groups currently use EUR, including existing groups. Category and payer display information are preserved on the expense if a category is later removed or its payer leaves. Equal splits are implemented; multiple payers, aggregate balances, settlements, and expense editing remain deferred.
+
+Restart Go and reload Metro. No APK rebuild or dependency installation is needed. If saving times out or returns an uncertain result, close the form and refresh expenses before retrying: it may already have saved. Model, HTTP, emulator, and mobile amount-parsing tests are present but execution and physical-device verification remain deferred.
+
+Groups containing expenses cannot be deleted yet. Deletion will require everyone to be settled up once balance/settlement functionality exists; for now the server rejects deletion rather than risking financial history. Empty groups may still be deleted normally.
+
+Tap an expense to open its detail menu, showing its name and total on one row, a smaller category, and who paid with the added date (without time). Saved participant shares appear below. Old expenses without shares still show **No contributions**. Any current member can use the top-right trash icon and confirm deletion. The row disappears after Go confirms, while the original record and deletion audit details remain stored. Groups with expense history still cannot be deleted, even if their visible list is empty. Restart Go and reload Metro; no APK rebuild is required.
+
+### Equal contributions
+
+When adding an expense, all current group members are selected as contributors by default, including the payer. Tap the checkboxes to exclude anyone. The payer and contributors are independent: one member can pay entirely for others, or just for one other person. At least one contributor must remain selected. Go calculates the equal shares, stores them in cents, and returns them for the detail menu. The payer's portion is labeled **Own share**; others are labeled **Owes**.
+
+For leftover cents, Go sorts selected Firebase UIDs and gives one extra cent to the first selected UID(s) until the remainder is exhausted. For example, €10 across usr1, usr2, usr3 becomes €3.34, €3.33, €3.33. Saved shares never change when someone later leaves. Existing expenses without contributions are left untouched. Restart Go and reload Metro together because creating a new expense now requires the participant selection; no APK rebuild is required.
+
+### Your position on expense cards
+
+Expense cards now show your own position, not the total: **You lent** in green for money others owe you, or **You borrowed** in orange for your share owed to the payer. For a €50 expense with the payer's own €10 share and four other €10 shares, the payer sees €40 lent and each other contributor sees €10 borrowed. Excluding the payer makes the whole total receivable for that payer.
+
+If you neither paid nor contribute, the card says **You are not part of this expense** and hides payer/amount information. Zero positions show **No amount owed**; older expenses without allocations show **Contributions not set**. Open details to see the expense total. Contribution amounts there are green only when owed to you, orange only when you owe them, and otherwise neutral. These are per-expense positions before future settlements or group-level netting.
+
+Restart Go and reload Metro together for the new viewer-position response. No APK rebuild or dependency installation is needed.

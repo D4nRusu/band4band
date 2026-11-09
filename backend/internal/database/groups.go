@@ -37,6 +37,9 @@ func (s *GroupStore) ListForUser(ctx context.Context, uid string) ([]models.Grou
 		}
 
 		group.ID = snapshot.Ref.ID
+		if group.Currency == "" {
+			group.Currency = models.DefaultCurrency
+		}
 		groups = append(groups, group)
 	}
 
@@ -64,6 +67,7 @@ func (s *GroupStore) Create(ctx context.Context, uid string, input models.GroupI
 
 	ref := s.db.Collection("groups").NewDoc()
 	group := models.Group{
+		Currency:    models.DefaultCurrency,
 		ID:          ref.ID,
 		Name:        input.Name,
 		Description: input.Description,
@@ -73,6 +77,7 @@ func (s *GroupStore) Create(ctx context.Context, uid string, input models.GroupI
 
 	// The group and creator's membership are committed in one document write.
 	result, err := ref.Create(ctx, map[string]any{
+		"currency":    group.Currency,
 		"name":        group.Name,
 		"description": group.Description,
 		"createdBy":   group.CreatedBy,
@@ -108,6 +113,10 @@ func (s *GroupStore) Delete(ctx context.Context, uid, groupID string) error {
 
 		if group.CreatedBy != uid {
 			return models.ErrGroupForbidden
+		}
+
+		if group.HasExpenses {
+			return models.ErrGroupHasExpenses
 		}
 
 		for _, invitationID := range group.PendingInvitations {

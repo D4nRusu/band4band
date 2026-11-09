@@ -12,9 +12,10 @@ type GroupSettingsModalProps = {
   group: Group;
   onClose: () => void;
   onEdit: () => void;
+  onCategories: () => void;
 };
 
-export function GroupSettingsModal({ user, group, onClose, onEdit }: GroupSettingsModalProps) {
+export function GroupSettingsModal({ user, group, onClose, onEdit, onCategories }: GroupSettingsModalProps) {
   const theme = useTheme();
   const isOwner = group.createdBy === user.uid;
   const { working, error, exitGroup } = useExitGroup(user, group, isOwner);
@@ -56,6 +57,14 @@ export function GroupSettingsModal({ user, group, onClose, onEdit }: GroupSettin
               pressed && styles.pressed, working && styles.disabled]}>
             <SymbolView name={{ ios: 'pencil', android: 'edit', web: 'edit' }} tintColor={theme.text} size={24} />
             <ThemedText style={styles.actionLabel}>Edit group</ThemedText>
+          </Pressable>
+
+          <Pressable onPress={onCategories} disabled={working} accessibilityRole="button"
+            accessibilityLabel="Categories" accessibilityState={{ disabled: working }}
+            style={({ pressed }) => [styles.action, { backgroundColor: theme.backgroundElement },
+              pressed && styles.pressed, working && styles.disabled]}>
+            <SymbolView name={{ ios: 'tag', android: 'category', web: 'category' }} tintColor={theme.text} size={24} />
+            <ThemedText style={styles.actionLabel}>Categories</ThemedText>
           </Pressable>
 
           <Pressable onPress={confirmExit} disabled={working} accessibilityRole="button"

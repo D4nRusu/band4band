@@ -1,0 +1,203 @@
+package httpapi_test
+
+import (
+	"context"
+	"encoding/json"
+	"net/http/httptest"
+	"strings"
+	"testing"
+
+	"firebase.google.com/go/v4/auth"
+	"github.com/D4nRusu/band4band/backend/internal/httpapi"
+	"github.com/D4nRusu/band4band/backend/internal/models"
+)
+
+func TestCreateExpense(t *testing.T) {
+	const valid = `{"name":" Lunch ","categoryID":"default_food","paidBy":"other-member","amountMinor":1250,"participantUIDs":["member","other-member"]}`
+	for _, tc := range []struct {
+		name, body    string
+		authenticated bool
+		storeError    error
+		status        int
+	}{
+		{"member pays for another member", valid, true, nil, 201},
+		{"unauthenticated", valid, false, nil, 401},
+		{"non-member", valid, true, models.ErrGroupAccessForbidden, 403},
+		{"payer not in group", valid, true, models.ErrInvalidExpensePayer, 400},
+		{"contributor not in group", valid, true, models.ErrInvalidExpenseParticipants, 400},
+		{"missing contributors", strings.Replace(valid, `,"participantUIDs":["member","other-member"]`, "", 1), true, nil, 400},
+		{"empty contributors", strings.Replace(valid, `["member","other-member"]`, `[]`, 1), true, nil, 400},
+		{"duplicate contributors", strings.Replace(valid, `["member","other-member"]`, `["member","member"]`, 1), true, nil, 400},
+		{"client-supplied shares", strings.Replace(valid, "}", `,"contributions":[{"uid":"member","amountMinor":1}]}`, 1), true, nil, 400},
+		{"category removed", valid, true, models.ErrInvalidExpenseCategory, 400},
+		{"missing group", valid, true, models.ErrGroupNotFound, 404},
+		{"zero amount", strings.Replace(valid, "1250", "0", 1), true, nil, 400},
+		{"negative amount", strings.Replace(valid, "1250", "-1", 1), true, nil, 400},
+		{"decimal amount", strings.Replace(valid, "1250", "12.50", 1), true, nil, 400},
+		{"string amount", strings.Replace(valid, "1250", `"1250"`, 1), true, nil, 400},
+		{"overflow", strings.Replace(valid, "1250", "9223372036854775808", 1), true, nil, 400},
+		{"unsafe JSON integer", strings.Replace(valid, "1250", "9007199254740992", 1), true, nil, 400},
+		{"injected creator", strings.Replace(valid, "}", `,"createdBy":"attacker"}`, 1), true, nil, 400},
+		{"injected currency", strings.Replace(valid, "}", `,"currency":"USD"}`, 1), true, nil, 400},
+		{"injected category label", strings.Replace(valid, "}", `,"categoryName":"Fake"}`, 1), true, nil, 400},
+		{"null", "null", true, nil, 400},
+		{"trailing JSON", valid + " {}", true, nil, 400},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			called := false
+			store := groupStoreStub{createExpense: func(_ context.Context, uid, groupID string, input models.ExpenseInput) (models.Expense, error) {
+				called = true
+				if uid != "member" || groupID != "group-id" || input.Name != "Lunch" || input.PaidBy != "other-member" || input.AmountMinor != 1250 || len(input.ParticipantUIDs) != 2 {
+					t.Fatalf("uid=%s group=%s input=%+v", uid, groupID, input)
+				}
+
+				return models.Expense{ID: "expense-id", GroupID: groupID, CreatedBy: uid, AmountMinor: input.AmountMinor, Currency: "EUR"}, tc.storeError
+			}}
+			verifier := verifierFunc(func(context.Context, string) (*auth.Token, error) { return &auth.Token{UID: "member"}, nil })
+			r := httptest.NewRequest("POST", "/api/groups/group-id/expenses?uid=attacker", strings.NewReader(tc.body))
+			if tc.authenticated {
+				r.Header.Set("Authorization", "Bearer token")
+			}
+
+			w := httptest.NewRecorder()
+			httpapi.NewRouter(verifier, nil, store, nil).ServeHTTP(w, r)
+			if w.Code != tc.status {
+				t.Fatalf("status=%d body=%s", w.Code, w.Body.String())
+			}
+
+			if (tc.status == 401 || (tc.status == 400 && tc.storeError == nil)) && called {
+				t.Fatal("invalid request reached storage")
+			}
+
+			if tc.status == 201 && (!strings.Contains(w.Body.String(), `"amountMinor":1250`) || w.Header().Get("Cache-Control") != "no-store") {
+				t.Fatalf("unexpected response=%s", w.Body.String())
+			}
+		})
+	}
+}
+
+func TestExpenseListAuthorization(t *testing.T) {
+	for _, tc := range []struct {
+		name          string
+		authenticated bool
+		err           error
+		status        int
+	}{
+		{"member", true, nil, 200},
+		{"non-member", true, models.ErrGroupAccessForbidden, 403},
+		{"missing group", true, models.ErrGroupNotFound, 404},
+		{"unauthenticated", false, nil, 401},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			store := groupStoreStub{expenses: func(_ context.Context, uid, id string) ([]models.Expense, error) {
+				if uid != "member" || id != "group-id" {
+					t.Fatalf("uid=%s id=%s", uid, id)
+				}
+				return nil, tc.err
+			}}
+			verifier := verifierFunc(func(context.Context, string) (*auth.Token, error) { return &auth.Token{UID: "member"}, nil })
+			r := httptest.NewRequest("GET", "/api/groups/group-id/expenses?uid=outsider", nil)
+			if tc.authenticated {
+				r.Header.Set("Authorization", "Bearer token")
+			}
+
+			w := httptest.NewRecorder()
+			httpapi.NewRouter(verifier, nil, store, nil).ServeHTTP(w, r)
+			if w.Code != tc.status {
+				t.Fatalf("status=%d", w.Code)
+			}
+
+			if tc.status == 200 && strings.TrimSpace(w.Body.String()) != "[]" {
+				t.Fatalf("body=%s", w.Body.String())
+			}
+		})
+	}
+}
+
+func TestDeleteExpenseEndpoint(t *testing.T) {
+	for _, tc := range []struct {
+		name          string
+		authenticated bool
+		err           error
+		status        int
+	}{
+		{"any current member", true, nil, 204},
+		{"unauthenticated", false, nil, 401},
+		{"non-member", true, models.ErrGroupAccessForbidden, 403},
+		{"missing group", true, models.ErrGroupNotFound, 404},
+		{"invalid expense ID", true, models.ErrInvalidExpenseID, 400},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			called := false
+			store := groupStoreStub{deleteExpense: func(_ context.Context, uid, groupID, expenseID string) error {
+				called = true
+				if uid != "ordinary-member" || groupID != "group-id" || expenseID != "expense-id" {
+					t.Fatalf("uid=%s groupID=%s expenseID=%s", uid, groupID, expenseID)
+				}
+
+				return tc.err
+			}}
+			verifier := verifierFunc(func(context.Context, string) (*auth.Token, error) { return &auth.Token{UID: "ordinary-member"}, nil })
+			r := httptest.NewRequest("DELETE", "/api/groups/group-id/expenses/expense-id?uid=attacker", nil)
+			if tc.authenticated {
+				r.Header.Set("Authorization", "Bearer token")
+			}
+
+			w := httptest.NewRecorder()
+			httpapi.NewRouter(verifier, nil, store, nil).ServeHTTP(w, r)
+			if w.Code != tc.status || called != tc.authenticated {
+				t.Fatalf("status=%d called=%v", w.Code, called)
+			}
+
+			if tc.status == 204 && (w.Body.Len() != 0 || w.Header().Get("Cache-Control") != "no-store") {
+				t.Fatalf("unexpected response: %s", w.Body.String())
+			}
+		})
+	}
+}
+
+func TestExpenseListPositionUsesVerifiedViewer(t *testing.T) {
+	for _, tc := range []struct {
+		uid, kind string
+		amount    int64
+	}{
+		{"payer", "lent", 4000},
+		{"participant", "borrowed", 1000},
+		{"creator", "not_involved", 0},
+	} {
+		t.Run(tc.uid, func(t *testing.T) {
+			verifier := verifierFunc(func(context.Context, string) (*auth.Token, error) { return &auth.Token{UID: tc.uid}, nil })
+			store := groupStoreStub{expenses: func(_ context.Context, uid, id string) ([]models.Expense, error) {
+				if uid != tc.uid {
+					t.Fatalf("uid=%s", uid)
+				}
+
+				return []models.Expense{{PaidBy: "payer", CreatedBy: "creator", AmountMinor: 5000,
+					Contributions: []models.ExpenseContribution{
+						{UID: "payer", AmountMinor: 1000}, {UID: "participant", AmountMinor: 1000}, {UID: "other", AmountMinor: 3000},
+					},
+				}}, nil
+			}}
+			r := httptest.NewRequest("GET", "/api/groups/group-id/expenses?uid=payer", nil)
+			r.Header.Set("Authorization", "Bearer token")
+			w := httptest.NewRecorder()
+			httpapi.NewRouter(verifier, nil, store, nil).ServeHTTP(w, r)
+			if w.Code != 200 {
+				t.Fatalf("status=%d", w.Code)
+			}
+
+			var expenses []models.Expense
+			if err := json.Unmarshal(w.Body.Bytes(), &expenses); err != nil {
+				t.Fatal(err)
+			}
+
+			if len(expenses) != 1 || expenses[0].ViewerPosition.Kind != tc.kind || expenses[0].ViewerPosition.AmountMinor != tc.amount {
+				t.Fatalf("expenses=%+v", expenses)
+			}
+
+			if w.Header().Get("Cache-Control") != "no-store" {
+				t.Fatal("viewer response must not be cached")
+			}
+		})
+	}
+}

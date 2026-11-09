@@ -8,6 +8,7 @@ import (
 )
 
 var (
+	ErrGroupHasExpenses        = errors.New("groups with expenses cannot be deleted until settlement checks are implemented")
 	ErrInvalidGroupName        = errors.New("group name must contain 1–100 characters")
 	ErrInvalidGroupDescription = errors.New("group description must contain at most 1000 characters")
 	ErrInvalidGroupID          = errors.New("invalid group ID")
@@ -47,11 +48,14 @@ func (input GroupInput) Normalize() (GroupInput, error) {
 }
 
 type Group struct {
-	ID                 string            `json:"id" firestore:"-"`
-	Name               string            `json:"name" firestore:"name"`
-	Description        string            `json:"description" firestore:"description"`
-	CreatedBy          string            `json:"createdBy" firestore:"createdBy"`
-	MemberUIDs         []string          `json:"memberUIDs" firestore:"memberUIDs"`
-	CreatedAt          time.Time         `json:"createdAt" firestore:"createdAt"`
-	PendingInvitations map[string]string `json:"-" firestore:"pendingInvitations,omitempty"`
+	Currency           string              `json:"currency" firestore:"currency"`
+	HasExpenses        bool                `json:"-" firestore:"hasExpenses,omitempty"`
+	CustomCategories   map[string]Category `json:"-" firestore:"customCategories,omitempty"`
+	ID                 string              `json:"id" firestore:"-"`
+	Name               string              `json:"name" firestore:"name"`
+	Description        string              `json:"description" firestore:"description"`
+	CreatedBy          string              `json:"createdBy" firestore:"createdBy"`
+	MemberUIDs         []string            `json:"memberUIDs" firestore:"memberUIDs"`
+	CreatedAt          time.Time           `json:"createdAt" firestore:"createdAt"`
+	PendingInvitations map[string]string   `json:"-" firestore:"pendingInvitations,omitempty"`
 }
