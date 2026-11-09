@@ -59,6 +59,11 @@ function GroupDetails({ user, groupID }: { user: AuthenticatedUser & { uid: stri
     setMenu(null);
   }
 
+  function openCategories() {
+    closeMenu();
+    router.push({ pathname: '/groups/[groupID]/categories', params: { groupID } });
+  }
+
   function savedGroup(updated: Group) {
     applyUpdate(updated);
     setMenu('settings');
@@ -103,7 +108,7 @@ function GroupDetails({ user, groupID }: { user: AuthenticatedUser & { uid: stri
       )}
 
       {group && menu === 'settings' && (
-        <GroupSettingsModal user={user} group={group} onClose={closeMenu} onEdit={() => setMenu('edit')} />
+        <GroupSettingsModal user={user} group={group} onClose={closeMenu} onEdit={() => setMenu('edit')} onCategories={openCategories} />
       )}
     </>
   );

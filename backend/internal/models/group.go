@@ -47,11 +47,12 @@ func (input GroupInput) Normalize() (GroupInput, error) {
 }
 
 type Group struct {
-	ID                 string            `json:"id" firestore:"-"`
-	Name               string            `json:"name" firestore:"name"`
-	Description        string            `json:"description" firestore:"description"`
-	CreatedBy          string            `json:"createdBy" firestore:"createdBy"`
-	MemberUIDs         []string          `json:"memberUIDs" firestore:"memberUIDs"`
-	CreatedAt          time.Time         `json:"createdAt" firestore:"createdAt"`
-	PendingInvitations map[string]string `json:"-" firestore:"pendingInvitations,omitempty"`
+	CustomCategories   map[string]Category `json:"-" firestore:"customCategories,omitempty"`
+	ID                 string              `json:"id" firestore:"-"`
+	Name               string              `json:"name" firestore:"name"`
+	Description        string              `json:"description" firestore:"description"`
+	CreatedBy          string              `json:"createdBy" firestore:"createdBy"`
+	MemberUIDs         []string            `json:"memberUIDs" firestore:"memberUIDs"`
+	CreatedAt          time.Time           `json:"createdAt" firestore:"createdAt"`
+	PendingInvitations map[string]string   `json:"-" firestore:"pendingInvitations,omitempty"`
 }

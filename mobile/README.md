@@ -163,3 +163,9 @@ Restart Go and reload Metro to use these routes; no new APK is needed. Physical-
 ### Editing groups
 
 Open a group's gear icon, then **Edit group**. Any current member can change the name and description. Save changes returns to settings and updates the group page. The image button is a disabled placeholder; image uploads are not available yet. Restart Go for the new update endpoint and reload Metro; no APK rebuild is required.
+
+### Group categories
+
+Open **Group settings → Categories** to see the ten shared defaults plus custom categories for that group. Any current member can tap **Add new category**, enter a name of 1–40 characters, and select an icon. Names must differ from existing custom and default names, ignoring case and repeated whitespace. Custom categories are shared with the group's members and do not appear in other groups. Refresh the list to see categories another member added.
+
+Restart Go and reload Metro for the new endpoints and page. No APK rebuild, Firebase Console setup, or dependency installation is needed. Category editing/deletion and actual expense creation are not implemented yet. Runtime/device and emulator tests remain deferred.

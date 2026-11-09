@@ -10,6 +10,8 @@ import (
 )
 
 type GroupStore interface {
+	Categories(context.Context, string, string) ([]models.Category, error)
+	AddCategory(context.Context, string, string, models.CategoryInput) (models.Category, error)
 	Update(context.Context, string, string, models.GroupInput) (models.Group, error)
 	ListForUser(context.Context, string) ([]models.Group, error)
 	Create(context.Context, string, models.GroupInput) (models.Group, error)
