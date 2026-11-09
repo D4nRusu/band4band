@@ -17,7 +17,7 @@ test('rejects zero, negative, ambiguous, overprecise, and unsafe values', () => 
 });
 
 test('formats exact cents, including the largest safe JSON integer', () => {
-  assert.equal(formatExpenseAmount(1, 'EUR'), '0.01 EUR');
-  assert.equal(formatExpenseAmount(1250, 'EUR'), '12.50 EUR');
-  assert.equal(formatExpenseAmount(Number.MAX_SAFE_INTEGER, 'EUR'), '90071992547409.91 EUR');
+  assert.equal(formatExpenseAmount(1, 'EUR'), '€0.01');
+  assert.equal(formatExpenseAmount(1250, 'EUR'), '€12.50');
+  assert.equal(formatExpenseAmount(Number.MAX_SAFE_INTEGER, 'EUR'), '€90071992547409.91');
 });

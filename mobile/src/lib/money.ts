@@ -17,5 +17,5 @@ export function formatExpenseAmount(amountMinor: number, currency: string): stri
   const amount = BigInt(amountMinor);
   const whole = amount / 100n;
   const fraction = (amount % 100n).toString().padStart(2, '0');
-  return `${whole}.${fraction} ${currency}`;
+  return currency === 'EUR' ? `€${whole}.${fraction}` : `${whole}.${fraction} ${currency}`;
 }

@@ -1,10 +1,9 @@
 import { ActivityIndicator, Button, Pressable, StyleSheet, View } from 'react-native';
 
+import { ExpenseCard } from '@/components/expense-card';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
-import { categoryIcons } from '@/lib/categories-api';
 import type { Expense } from '@/lib/expenses-api';
-import { formatExpenseAmount } from '@/lib/money';
 
 type GroupExpenseListProps = {
   expenses: Expense[];
@@ -38,13 +37,7 @@ export function GroupExpenseList({ expenses, loading, error, saving, onAdd, onRe
       {!loading && !error && expenses.length === 0 && <ThemedText>No expenses yet. Add the first one above.</ThemedText>}
 
       {expenses.map((expense) => (
-        <View key={expense.id} style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
-          <ThemedText type="smallBold">{expense.name}</ThemedText>
-          <ThemedText>{formatExpenseAmount(expense.amountMinor, expense.currency)}</ThemedText>
-          <ThemedText type="small">{categoryIcons[expense.categoryIcon].image} {expense.categoryName}</ThemedText>
-          <ThemedText type="small">Paid by {expense.payerName}</ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">{new Date(expense.createdAt).toLocaleString()}</ThemedText>
-        </View>
+        <ExpenseCard key={expense.id} expense={expense} />
       ))}
     </View>
   );
@@ -58,5 +51,4 @@ const styles = StyleSheet.create({
   pressed: { opacity: 0.7 },
   disabled: { opacity: 0.5 },
   feedback: { gap: 8 },
-  card: { padding: 16, gap: 8, borderRadius: 12 },
 });
