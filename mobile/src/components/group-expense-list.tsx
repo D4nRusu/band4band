@@ -1,4 +1,4 @@
-import { ActivityIndicator, Button, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Button, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
@@ -17,11 +17,17 @@ type GroupExpenseListProps = {
 
 export function GroupExpenseList({ expenses, loading, error, saving, onAdd, onRetry }: GroupExpenseListProps) {
   const theme = useTheme();
+  const addDisabled = loading || saving || error !== null;
 
   return (
     <View style={styles.section}>
-      <ThemedText type="subtitle" accessibilityRole="header">Expenses</ThemedText>
-      <Button title="Add expense" onPress={onAdd} disabled={loading || saving || error !== null} />
+      <Pressable onPress={onAdd} disabled={addDisabled} accessibilityRole="button"
+        accessibilityLabel="Add expense" accessibilityState={{ disabled: addDisabled }}
+        style={({ pressed }) => [styles.add, { backgroundColor: theme.backgroundElement },
+          pressed && styles.pressed, addDisabled && styles.disabled]}>
+        <ThemedText style={styles.plus} accessible={false}>+</ThemedText>
+        <ThemedText type="smallBold">Add expense</ThemedText>
+      </Pressable>
       {loading && <ActivityIndicator accessibilityLabel="Loading expenses" />}
       {error && (
         <View style={styles.feedback}>
@@ -45,7 +51,12 @@ export function GroupExpenseList({ expenses, loading, error, saving, onAdd, onRe
 }
 
 const styles = StyleSheet.create({
-  section: { padding: 24, gap: 16 },
+  section: { paddingHorizontal: 24, paddingTop: 12, paddingBottom: 24, gap: 16 },
+  add: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 8,
+    minHeight: 48, paddingHorizontal: 14, borderRadius: 24 },
+  plus: { fontSize: 24, lineHeight: 28 },
+  pressed: { opacity: 0.7 },
+  disabled: { opacity: 0.5 },
   feedback: { gap: 8 },
   card: { padding: 16, gap: 8, borderRadius: 12 },
 });

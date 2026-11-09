@@ -95,7 +95,6 @@ function GroupDetails({ user, groupID }: { user: AuthenticatedUser & { uid: stri
           <>
             <GroupBanner group={group} onBack={backToGroups}
               onPeoplePress={() => setMenu('members')} onSettingsPress={() => setMenu('settings')} />
-            {group.description !== '' && <ThemedText style={styles.description}>{group.description}</ThemedText>}
             <GroupExpenseList expenses={expenses.expenses} loading={expenses.loading} error={expenses.error}
               saving={expenses.saving} onAdd={openExpense} onRetry={expenses.reload} />
           </>
@@ -143,5 +142,4 @@ function GroupDetails({ user, groupID }: { user: AuthenticatedUser & { uid: stri
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   feedback: { padding: 24, gap: 16 },
-  description: { padding: 24 },
 });
