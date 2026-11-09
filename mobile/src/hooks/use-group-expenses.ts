@@ -2,7 +2,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { AuthenticatedUser } from '@/lib/api';
-import { createExpense, getExpenses, type Expense, type ExpenseInput } from '@/lib/expenses-api';
+import { createExpense, ExpenseRejectedError, getExpenses, type Expense, type ExpenseInput } from '@/lib/expenses-api';
 import { GroupUnavailableError } from '@/lib/groups-api';
 
 export function useGroupExpenses(user: AuthenticatedUser, groupID: string) {
@@ -29,7 +29,7 @@ export function useGroupExpenses(user: AuthenticatedUser, groupID: string) {
     const timeout = setTimeout(() => {
       controller.abort();
       setLoading(false);
-      setError('Loading expenses timed out. Please retry.');
+      setError('Expenses took too long to load. Check your connection, then tap Retry expenses.');
     }, 15000);
 
     getExpenses(user, groupID, controller.signal)
@@ -44,7 +44,7 @@ export function useGroupExpenses(user: AuthenticatedUser, groupID: string) {
           return;
         }
 
-        setError(cause instanceof Error ? cause.message : 'Could not load expenses.');
+        setError(cause instanceof Error ? cause.message : 'Could not load expenses. Check your connection, then tap Retry expenses.');
       })
       .finally(() => {
         clearTimeout(timeout);
@@ -87,10 +87,15 @@ export function useGroupExpenses(user: AuthenticatedUser, groupID: string) {
         return false;
       }
 
-      const message = cause instanceof Error ? cause.message : 'Could not save this expense.';
+      if (cause instanceof ExpenseRejectedError) {
+        setSaveError(cause.message);
+        return false;
+      }
+
+      const message = cause instanceof Error ? cause.message : 'The connection was interrupted while saving.';
       setSaveError(controller.signal.aborted
-        ? 'Saving could not be confirmed. Close this form and refresh expenses before trying again.'
-        : `${message} If saving is uncertain, close this form and refresh before retrying.`);
+        ? 'Saving took too long, so we could not confirm whether it finished. Use the back arrow and refresh expenses before trying again to avoid a duplicate.'
+        : `${message} We could not confirm whether the expense was saved. Use the back arrow and refresh expenses before trying again.`);
       return false;
     } finally {
       clearTimeout(timeout);

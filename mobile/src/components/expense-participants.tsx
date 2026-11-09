@@ -19,7 +19,7 @@ export function ExpenseParticipants({ members, selectedUIDs, disabled, onToggle 
     <View style={styles.section}>
       <ThemedText>Split equally between</ThemedText>
       <ThemedText type="small" themeColor="textSecondary">
-        Tap to include or exclude anyone, including the payer. Shares may differ by one cent.
+        Tap to include or exclude anyone, including the payer.
       </ThemedText>
 
       {members.map((member) => {

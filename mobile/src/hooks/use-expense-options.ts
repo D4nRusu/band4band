@@ -16,7 +16,7 @@ export function useExpenseOptions(user: AuthenticatedUser, groupID: string) {
     const timeout = setTimeout(() => {
       controller.abort();
       setLoading(false);
-      setError('Loading categories and members timed out. Please retry.');
+      setError('Categories and group members took too long to load. Check your connection, then tap Retry loading options.');
     }, 15000);
 
     Promise.all([getCategories(user, groupID, controller.signal), getGroupMembers(user, groupID, controller.signal)])
@@ -27,7 +27,7 @@ export function useExpenseOptions(user: AuthenticatedUser, groupID: string) {
         setMembers(loadedMembers);
       })
       .catch((cause: unknown) => {
-        if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : 'Could not load expense options.');
+        if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : 'Could not load the categories and group members. Check your connection, then tap Retry loading options.');
       })
       .finally(() => {
         clearTimeout(timeout);

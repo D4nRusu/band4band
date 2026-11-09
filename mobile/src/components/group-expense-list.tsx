@@ -1,6 +1,7 @@
 import { ActivityIndicator, Button, Pressable, StyleSheet, View } from 'react-native';
 
 import { ExpenseCard } from '@/components/expense-card';
+import { ErrorMessage } from '@/components/error-message';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import type { Expense } from '@/lib/expenses-api';
@@ -31,7 +32,7 @@ export function GroupExpenseList({ expenses, loading, error, saving, onAdd, onOp
       {loading && <ActivityIndicator accessibilityLabel="Loading expenses" />}
       {error && (
         <View style={styles.feedback}>
-          <ThemedText accessibilityRole="alert">{error}</ThemedText>
+          <ErrorMessage message={error} />
           <Button title="Retry expenses" onPress={onRetry} disabled={loading || saving} />
         </View>
       )}

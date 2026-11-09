@@ -2,6 +2,8 @@ import { authenticatedRequest, type AuthenticatedUser } from '@/lib/api';
 import { categoryIcons, type CategoryIcon } from '@/lib/categories-api';
 import { GroupUnavailableError } from '@/lib/groups-api';
 
+export class ExpenseRejectedError extends Error {}
+
 export type ExpenseInput = {
   participantUIDs: string[];
   name: string;
@@ -68,19 +70,19 @@ async function checkResponse(response: Response) {
     throw new GroupUnavailableError('This group is no longer available.');
   }
 
-  if (response.status === 401) throw new Error('Your session was rejected. Sign out and sign in again.');
+  if (response.status === 401) throw new ExpenseRejectedError('Your sign-in session could not be verified. Sign out and sign in again before retrying.');
 
   if (response.status === 400) {
     const body: unknown = await response.json();
     if (body && typeof body === 'object' && 'code' in body && body.code === 'invalid_expense'
       && 'message' in body && typeof body.message === 'string') {
-      throw new Error(body.message);
+      throw new ExpenseRejectedError(`${body.message.charAt(0).toUpperCase()}${body.message.slice(1)}.`);
     }
 
-    throw new Error('Check the expense name, amount, category, and payer.');
+    throw new ExpenseRejectedError('Check the name and amount, then select a category, payer, and at least one contributor.');
   }
 
-  if (!response.ok) throw new Error('The expense request could not be confirmed. Refresh before retrying.');
+  if (!response.ok) throw new Error('The server could not complete the expense request.');
 }
 
 function isExpense(value: unknown): value is Expense {
