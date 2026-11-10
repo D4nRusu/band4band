@@ -24,9 +24,9 @@ func TestSimplifyDebtCycles(t *testing.T) {
 			want:  map[string][]models.DebtNeighbor{},
 		},
 		{
-			name:  "acyclic chain stays intact",
+			name:  "acyclic chain collapses",
 			input: map[string][]models.DebtNeighbor{"a": {{ToUID: "b", AmountMinor: 1000}}, "b": {{ToUID: "c", AmountMinor: 500}}},
-			want:  map[string][]models.DebtNeighbor{"a": {{ToUID: "b", AmountMinor: 1000}}, "b": {{ToUID: "c", AmountMinor: 500}}},
+			want:  map[string][]models.DebtNeighbor{"a": {{ToUID: "b", AmountMinor: 500}, {ToUID: "c", AmountMinor: 500}}},
 		},
 		{
 			name:  "opposite debts form a two node cycle",
@@ -40,10 +40,7 @@ func TestSimplifyDebtCycles(t *testing.T) {
 				"b": {{ToUID: "c", AmountMinor: 700}},
 				"c": {{ToUID: "a", AmountMinor: 400}},
 			},
-			want: map[string][]models.DebtNeighbor{
-				"a": {{ToUID: "b", AmountMinor: 600}},
-				"b": {{ToUID: "c", AmountMinor: 300}},
-			},
+			want: map[string][]models.DebtNeighbor{"a": {{ToUID: "b", AmountMinor: 300}, {ToUID: "c", AmountMinor: 300}}},
 		},
 		{
 			name: "equal edges all disappear",
@@ -75,9 +72,7 @@ func TestSimplifyDebtCycles(t *testing.T) {
 				"d": {{ToUID: "b", AmountMinor: 300}},
 			},
 			want: map[string][]models.DebtNeighbor{
-				"a": {{ToUID: "b", AmountMinor: 900}},
-				"b": {{ToUID: "c", AmountMinor: 400}},
-				"c": {{ToUID: "d", AmountMinor: 200}},
+				"a": {{ToUID: "b", AmountMinor: 500}, {ToUID: "c", AmountMinor: 200}, {ToUID: "d", AmountMinor: 200}},
 			},
 		},
 		{

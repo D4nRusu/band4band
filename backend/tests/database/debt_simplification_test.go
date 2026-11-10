@@ -42,8 +42,9 @@ func TestExpenseChangesPersistSimplifiedDebts(t *testing.T) {
 	checkDebt(t, raw, "bob", "charlie", 700)
 	checkDebt(t, raw, "charlie", "alice", 400)
 	simplified := readSimplifiedGraph(t, db, ctx, group.ID)
-	checkDebt(t, simplified, "alice", "bob", 600)
-	checkDebt(t, simplified, "bob", "charlie", 300)
+	checkDebt(t, simplified, "alice", "bob", 300)
+	checkDebt(t, simplified, "alice", "charlie", 300)
+	checkDebt(t, simplified, "bob", "charlie", 0)
 	checkDebt(t, simplified, "charlie", "alice", 0)
 	if !raw.UpdatedAt.Equal(simplified.UpdatedAt) {
 		t.Fatal("raw and simplified graphs were not updated together")
@@ -55,8 +56,9 @@ func TestExpenseChangesPersistSimplifiedDebts(t *testing.T) {
 	}
 
 	simplified = readSimplifiedGraph(t, db, ctx, group.ID)
-	checkDebt(t, simplified, "alice", "bob", 1000)
-	checkDebt(t, simplified, "bob", "charlie", 700)
+	checkDebt(t, simplified, "alice", "bob", 300)
+	checkDebt(t, simplified, "alice", "charlie", 700)
+	checkDebt(t, simplified, "bob", "charlie", 0)
 	checkDebt(t, simplified, "charlie", "alice", 0)
 	beforeRetry := simplified.UpdatedAt
 	if err := groups.DeleteExpense(ctx, "alice", group.ID, closing.ID); err != nil {
