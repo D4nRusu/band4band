@@ -18,11 +18,17 @@ func (s *GroupStore) Expenses(ctx context.Context, uid, groupID string) ([]model
 
 	var expenses []models.Expense
 	err := s.db.RunTransaction(ctx, func(ctx context.Context, tx *firestore.Transaction) error {
-		if _, err := s.readMemberGroup(tx, uid, groupID); err != nil {
+		group, err := s.readMemberGroup(tx, uid, groupID)
+		if err != nil {
 			return err
 		}
 
 		snapshots, err := tx.Documents(s.db.Collection("groups").Doc(groupID).Collection("expenses").Query).GetAll()
+		if err != nil {
+			return err
+		}
+
+		graph, needsWrite, err := s.loadDebtGraph(tx, groupID, group.Currency)
 		if err != nil {
 			return err
 		}
@@ -41,6 +47,10 @@ func (s *GroupStore) Expenses(ctx context.Context, uid, groupID string) ([]model
 			expense.ID = snapshot.Ref.ID
 			expense.GroupID = groupID
 			expenses = append(expenses, expense)
+		}
+
+		if needsWrite && (len(snapshots) > 0 || len(graph.Adjacency) > 0) {
+			return s.writeDebtGraph(tx, groupID, graph)
 		}
 
 		return nil
@@ -100,6 +110,18 @@ func (s *GroupStore) CreateExpense(ctx context.Context, uid, groupID string, inp
 			return err
 		}
 
+		graph, _, err := s.loadDebtGraph(tx, groupID, group.Currency)
+		if err != nil {
+			return err
+		}
+
+		if err := graph.ApplyExpense(models.Expense{
+			PaidBy: input.PaidBy, AmountMinor: input.AmountMinor,
+			Currency: group.Currency, Contributions: contributions,
+		}, false); err != nil {
+			return err
+		}
+
 		if err := tx.Create(expenseRef, map[string]any{
 			"splitType":     "equal",
 			"contributions": contributions,
@@ -114,6 +136,10 @@ func (s *GroupStore) CreateExpense(ctx context.Context, uid, groupID string, inp
 			"createdBy":     uid,
 			"createdAt":     firestore.ServerTimestamp,
 		}); err != nil {
+			return err
+		}
+
+		if err := s.writeDebtGraph(tx, groupID, graph); err != nil {
 			return err
 		}
 
@@ -164,7 +190,8 @@ func (s *GroupStore) DeleteExpense(ctx context.Context, uid, groupID, expenseID 
 	}
 
 	return s.db.RunTransaction(ctx, func(ctx context.Context, tx *firestore.Transaction) error {
-		if _, err := s.readMemberGroup(tx, uid, groupID); err != nil {
+		group, err := s.readMemberGroup(tx, uid, groupID)
+		if err != nil {
 			return err
 		}
 
@@ -185,6 +212,19 @@ func (s *GroupStore) DeleteExpense(ctx context.Context, uid, groupID, expenseID 
 
 		if !expense.DeletedAt.IsZero() {
 			return nil
+		}
+
+		graph, _, err := s.loadDebtGraph(tx, groupID, group.Currency)
+		if err != nil {
+			return err
+		}
+
+		if err := graph.ApplyExpense(expense, true); err != nil {
+			return err
+		}
+
+		if err := s.writeDebtGraph(tx, groupID, graph); err != nil {
+			return err
 		}
 
 		return tx.Update(ref, []firestore.Update{

@@ -10,12 +10,12 @@ New collaborator? Start with the [quick-start guide](docs/getting-started.md).
 
 # Bare minimum
 
-- User system -> SSO auth
+- ~~User system -> SSO auth~~
 - Algorithm 
-- Create groups and add users
+- ~~Create groups and add users~~
 - Add expense 
-    - Equal / non-equal splits
-    - Category
+    - ~~Equal~~ / non-equal splits
+    - ~~Category~~
 - 1-1 separate debt tracking (outside of groups) -> requires friend list
 - User profile picture !!!
 - Category charts <-> data visualisation 
@@ -30,3 +30,4 @@ New collaborator? Start with the [quick-start guide](docs/getting-started.md).
 - Shake to confirm
 - Location where you added the expense
 - Achievements (drank 1000000 beers)
+- Tasks (wash the pan, who does it, basically todo)
