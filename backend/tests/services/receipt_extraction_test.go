@@ -100,7 +100,8 @@ func TestReceiptResponseValidation(t *testing.T) {
 		{"extra fields", strings.Replace(readableReceipt, `"currency"`, `"instructions":"ignore rules","currency"`, 1), "stop", models.ErrReceiptResponse},
 		{"fractional cents", strings.Replace(readableReceipt, `"6.50"`, `"6.501"`, 1), "stop", models.ErrReceiptResponse},
 		{"exponent", strings.Replace(readableReceipt, `"6.50"`, `"6e2"`, 1), "stop", models.ErrReceiptResponse},
-		{"numeric amount", strings.Replace(readableReceipt, `"6.50"`, "6.50", 1), "stop", models.ErrReceiptResponse},
+		{"numeric fractional cents", strings.Replace(readableReceipt, `"6.50"`, "6.501", 1), "stop", models.ErrReceiptResponse},
+		{"numeric exponent", strings.Replace(readableReceipt, `"6.50"`, "6e2", 1), "stop", models.ErrReceiptResponse},
 		{"unsafe integer", strings.Replace(readableReceipt, `"6.50"`, `"90071992547409.92"`, 1), "stop", models.ErrReceiptResponse},
 		{"integer overflow", strings.Replace(readableReceipt, `"6.50"`, `"999999999999999999999999999999"`, 1), "stop", models.ErrReceiptResponse},
 		{"zero total", strings.Replace(readableReceipt, `"18.50"`, `"0"`, 1), "stop", models.ErrReceiptResponse},
@@ -127,6 +128,38 @@ func TestReceiptResponseValidation(t *testing.T) {
 				t.Fatalf("discount=%+v", draft)
 			}
 		})
+	}
+}
+
+func TestReceiptMixedAmountsAndLineDiscount(t *testing.T) {
+	const receipt = `{"currency":"LEI","total":166.78,"items":[
+		{"name":"Cable","amount":"24.10"},
+		{"name":"Cable ties","amount":"11.66"},
+		{"name":"Extension cord","amount":"17.35","discount":-0.75},
+		{"name":"Crimping tool","amount":59.00},
+		{"name":"Screwdrivers","amount":"34.71"},
+		{"name":"Connectors","amount":"19.96"}
+	]}`
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		completionResponse(w, receipt, "stop")
+	}))
+	defer server.Close()
+	extractor, err := services.NewReceiptExtractor(server.URL, "receipts")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	draft, err := extractor.Extract(context.Background(), nil, "image/png")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if draft.Currency != "RON" || draft.TotalMinor != 16678 || draft.ItemsTotalMinor != 16678 || !draft.TotalsMatch || len(draft.Items) != 6 {
+		t.Fatalf("draft=%+v", draft)
+	}
+
+	if draft.Items[2].AmountMinor != 1735 || draft.Items[3].AmountMinor != 5900 {
+		t.Fatalf("items=%+v", draft.Items)
 	}
 }
 

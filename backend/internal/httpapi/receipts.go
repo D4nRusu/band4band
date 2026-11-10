@@ -36,7 +36,7 @@ func (h receiptHandler) extract(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	group, err := h.groups.Details(r.Context(), uid, r.PathValue("groupID"))
+	_, err := h.groups.Details(r.Context(), uid, r.PathValue("groupID"))
 	if err != nil {
 		writeGroupError(w, err)
 		return
@@ -56,13 +56,6 @@ func (h receiptHandler) extract(w http.ResponseWriter, r *http.Request) {
 	draft, err := h.extractor.Extract(r.Context(), data, contentType)
 	if err != nil {
 		writeReceiptError(w, err)
-		return
-	}
-
-	if draft.Currency != group.Currency {
-		writeGroupJSON(w, http.StatusUnprocessableEntity, map[string]string{
-			"code": "receipt_currency_mismatch", "message": "The receipt currency must match the group currency.",
-		})
 		return
 	}
 

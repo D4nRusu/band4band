@@ -1,5 +1,6 @@
 import { authenticatedRequest, type AuthenticatedUser } from '@/lib/api';
 import { GroupUnavailableError } from '@/lib/groups-api';
+import { createReceiptUpload } from '@/lib/receipt-upload';
 
 export type ReceiptPhoto = { uri: string; mimeType: 'image/jpeg' | 'image/png'; name: string };
 export type ReceiptItem = { id: string; name: string; amountMinor: number };
@@ -14,9 +15,7 @@ export type ReceiptDraft = {
 export async function extractReceipt(
   user: AuthenticatedUser, groupID: string, photo: ReceiptPhoto, signal: AbortSignal,
 ): Promise<ReceiptDraft> {
-  const body = new FormData();
-  // React Native accepts URI file parts; the DOM typings describe browser Blobs only.
-  body.append('image', { uri: photo.uri, type: photo.mimeType, name: photo.name } as unknown as Blob);
+  const body = await createReceiptUpload(photo, signal);
   const response = await authenticatedRequest(user, `/api/groups/${encodeURIComponent(groupID)}/receipts/extract`, {
     method: 'POST', body, signal,
   });
@@ -31,7 +30,7 @@ export async function extractReceipt(
     const messages: Record<number, string> = {
       400: 'Use a clear JPEG or PNG receipt photo under 25 megapixels.',
       413: 'This photo is too large. Choose a photo smaller than 10 MiB.',
-      422: 'The receipt could not be read or its currency differs from the group. Try a clearer photo in the group currency.',
+      422: 'The receipt total, currency, or items could not be read. Try a clearer photo.',
       429: 'Another receipt is being scanned. Wait a moment, then tap Scan receipt again.',
       502: 'The receipt reader returned incomplete or invalid items. Try again or use a clearer photo.',
       503: 'The receipt reader is temporarily unavailable. Please try again shortly.',

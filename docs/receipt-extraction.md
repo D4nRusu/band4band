@@ -68,7 +68,7 @@ adb reverse tcp:8081 tcp:8081
 
 The phone talks only to Go; no forwarding of the model port is needed. On first capture, allow the camera permission. Photo-library selection uses the system chooser; no microphone permission is requested. If a photo is over 10 MiB or 25 megapixels, use the camera's standard-resolution mode or choose a smaller JPEG/PNG.
 
-The result lists item names, prices, and the printed total. A red message highlights a different item sum. Cancel scan or the back arrow aborts the request; closing the modal discards the in-memory draft. There is no automatic retry. The current UI is an extraction preview: item editing, assigning users, creating an expense, and storing the image in Cloud Storage are not implemented yet. The picker may create local cache files; no manual token files or cloud image records are created.
+The result lists item names, prices, and the printed total. A red message highlights a different item sum. Cancel scan or the back arrow aborts the request; closing the modal discards the in-memory draft. There is no automatic retry. Uploads read the local photo into a real Blob: SDK 57 does not accept legacy URI objects as multipart file parts. This upload correction is JavaScript-only; reload the app through Metro, without rebuilding the APK. The current UI is an extraction preview: item editing, assigning users, creating an expense, and storing the image in Cloud Storage are not implemented yet. The picker may create local cache files; no manual token files or cloud image records are created.
 
 Check a clear receipt, a mismatching/unreadable receipt, denied camera permission, choosing an existing image, cancellation, and a stopped model server. Verify ordinary expense creation and sign-out still work. Physical-device and live-model verification remains manual.
 
@@ -100,9 +100,9 @@ Example successful response (illustrative receipt):
 }
 ```
 
-Item IDs identify rows within that draft only; nothing is persisted. Prices are full line totals, not unit prices. Go converts model-provided decimal strings into integer cents without floating-point arithmetic. Individual values and running item totals must fit the application's JavaScript-safe integer range.
+Item IDs identify rows within that draft only; nothing is persisted. Prices are full line totals after any line discount. Go accepts decimal strings and JSON numbers and converts them to integer cents without floating-point arithmetic. An extra `discount` field on an item is ignored because its `amount` already represents the net line total. Individual values and running item totals must fit the application's JavaScript-safe integer range.
 
-The extracted currency must match the group's currency, currently EUR. Missing or unreadable required information produces an error rather than guessing the currency or total. A different item sum is still returned with `totalsMatch: false`, preserving the printed total and item values for later user review. Separately printed discounts can appear as negative draft lines; their eventual allocation rules are outside this milestone. JSON/schema validation does not establish that the image was read accurately.
+Go normalizes `LEI` to `RON`. The read-only preview uses the receipt currency even when the group uses a different currency. Missing or unreadable required information produces an error rather than guessing the currency or total. A different item sum is still returned with `totalsMatch: false`, preserving the printed total and item values for later user review. Separately printed discounts can appear as negative draft lines; their eventual allocation rules are outside this milestone. JSON/schema validation does not establish that the image was read accurately.
 
 ## Limits and failures
 
@@ -111,7 +111,7 @@ The extracted currency must match the group's currency, currently EUR. Missing o
 - One active model request per Go process; another request receives 429 with `Retry-After`.
 - Model HTTP timeout: 120 seconds. Disconnecting cancels Go's upstream HTTP request; GPU cancellation behavior depends on the model server.
 - Maximum model response: 2 MiB; maximum 200 items with names up to 200 characters. Generation is capped at 4096 tokens. Truncated responses fail instead of becoming partial drafts.
-- Redirects from the model endpoint are not followed. No receipt images, inference responses, or authentication tokens are logged or written to temporary files.
+- Redirects from the model endpoint are not followed. Receipt images and authentication tokens are never logged or written to temporary files. Model responses are logged only when the opt-in diagnostics below are enabled.
 
 | Status | Meaning |
 | --- | --- |
@@ -119,13 +119,21 @@ The extracted currency must match the group's currency, currently EUR. Missing o
 | 401 | Missing or invalid Firebase ID token |
 | 403 / 404 | Not a current member / group not found |
 | 413 | Upload exceeds the image/body limit |
-| 422 | Required receipt data unreadable or currency does not match the group |
+| 422 | Required receipt data unreadable |
 | 429 | Model already processing another request |
 | 502 | Invalid, oversized, or truncated model response |
 | 503 | Extraction disabled or model server unavailable/rejected request |
 | 504 | Model request timed out |
 
 Responses use `Cache-Control: no-store`. Model error bodies and private upstream details are not returned to callers. The endpoint uses the existing membership read but performs no Firestore writes. Do not automatically retry expensive inference requests in a loop.
+
+## Inspect rejected model responses
+
+Set `RECEIPT_LLM_DEBUG=true` in the local `backend/.env`, restart Go, and scan again. Lines prefixed `[receipt-llm]` in the **Go terminal** show the upstream HTTP status, raw response (limited to 64 KiB), and the precise rejection reason. The raw response includes the model's finish reason and usage fields when supplied. `finish_reason="length"` indicates that the generation hit its token limit; JSON/type errors or item validation failures identify the failing field or row. This does not relax validation or expose internal diagnostics to the mobile client.
+
+Only the model response is recorded, not request headers, Firebase tokens, prompts, or image bytes. The output may contain receipt text. Set `RECEIPT_LLM_DEBUG=false` and restart Go after diagnosis; diagnostics are disabled by default and the example environment keeps them off. No debug files are created.
+
+The mobile `Response.blob()` warning describes extra copying/base64 overhead while reading the photo with React Native's Blob implementation. Once Go and the model receive the image, that warning is not the cause of model-response validation failure. The existing upload remains functional; `expo-blob` is an optional future performance improvement requiring separate dependency approval and a native rebuild, not a prerequisite for inspecting extraction results.
 
 ## Code and verification
 

@@ -73,7 +73,7 @@ func TestReceiptEndpointAuthorizationAndErrors(t *testing.T) {
 		{"model failure", true, true, nil, errors.New("private upstream details"), "EUR", 502},
 		{"timeout", true, true, nil, context.DeadlineExceeded, "EUR", 504},
 		{"busy", true, true, nil, models.ErrReceiptBusy, "EUR", 429},
-		{"different currency", true, true, nil, nil, "USD", 422},
+		{"different currency previews the original amounts", true, true, nil, nil, "RON", 200},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			groupCalled, modelCalled := false, false
@@ -123,8 +123,8 @@ func TestReceiptEndpointAuthorizationAndErrors(t *testing.T) {
 				if err := json.Unmarshal(w.Body.Bytes(), &draft); err != nil {
 					t.Fatal(err)
 				}
-				if draft.TotalsMatch || draft.TotalMinor != 150 || draft.ItemsTotalMinor != 100 {
-					t.Fatalf("mismatch lost: %+v", draft)
+				if draft.Currency != tc.currency || draft.TotalsMatch || draft.TotalMinor != 150 || draft.ItemsTotalMinor != 100 {
+					t.Fatalf("unexpected preview: %+v", draft)
 				}
 			}
 		})

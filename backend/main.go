@@ -38,6 +38,7 @@ func main() {
 			log.Fatal(err)
 		}
 
+		extractor.Debug = os.Getenv("RECEIPT_LLM_DEBUG") == "true"
 		receiptExtractor = extractor
 	}
 
