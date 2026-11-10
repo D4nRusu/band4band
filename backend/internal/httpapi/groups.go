@@ -13,6 +13,14 @@ type GroupStore interface {
 	SettleUp(context.Context, string, string, string, string, int64) error
 	Settlements(context.Context, string, string) ([]models.Settlement, error)
 	MemberBalances(context.Context, string, string) ([]models.MemberBalance, error)
+	Lists(context.Context, string, string) ([]models.GroupList, error)
+	CreateList(context.Context, string, string, models.ListInput) (models.GroupList, error)
+	DeleteList(context.Context, string, string, string) error
+	ListItems(context.Context, string, string, string) ([]models.ListItem, error)
+	AddListItem(context.Context, string, string, string, models.ListItemInput) (models.ListItem, error)
+	SetListItemDone(context.Context, string, string, string, string, bool) error
+	DeleteListItem(context.Context, string, string, string, string) error
+	ClearDoneListItems(context.Context, string, string, string) error
 	UserOwedSummary(context.Context, string, string, string) (models.UserOwedSummary, error)
 	UserReceivableSummary(context.Context, string, string, string) (models.UserReceivableSummary, error)
 	DeleteExpense(context.Context, string, string, string) error

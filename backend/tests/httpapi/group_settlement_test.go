@@ -264,3 +264,56 @@ func TestUserReceivableSummaryEndpoint(t *testing.T) {
 		})
 	}
 }
+
+func TestGroupStatsEndpoint(t *testing.T) {
+	for _, tc := range []struct {
+		name          string
+		authenticated bool
+		err           error
+		status        int
+	}{
+		{"member", true, nil, 200},
+		{"non-member", true, models.ErrGroupAccessForbidden, 403},
+		{"missing group", true, models.ErrGroupNotFound, 404},
+		{"unauthenticated", false, nil, 401},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			store := groupStoreStub{expenses: func(_ context.Context, uid, groupID string) ([]models.Expense, error) {
+				if uid != "member" || groupID != "group-id" {
+					t.Fatalf("uid=%s group=%s", uid, groupID)
+				}
+
+				if tc.err != nil {
+					return nil, tc.err
+				}
+
+				return []models.Expense{{
+					CategoryID: "food", CategoryName: "Food", PaidBy: "bob", AmountMinor: 600, Currency: "EUR",
+					Contributions: []models.ExpenseContribution{{UID: "member", AmountMinor: 200}, {UID: "bob", AmountMinor: 400}},
+				}}, nil
+			}}
+			verifier := verifierFunc(func(context.Context, string) (*auth.Token, error) { return &auth.Token{UID: "member"}, nil })
+			r := httptest.NewRequest("GET", "/api/groups/group-id/stats?uid=bob", nil)
+			if tc.authenticated {
+				r.Header.Set("Authorization", "Bearer token")
+			}
+
+			w := httptest.NewRecorder()
+			httpapi.NewRouter(verifier, nil, store, nil).ServeHTTP(w, r)
+			if w.Code != tc.status {
+				t.Fatalf("status=%d body=%s", w.Code, w.Body.String())
+			}
+
+			if tc.status == 200 {
+				var stats models.GroupStats
+				if err := json.Unmarshal(w.Body.Bytes(), &stats); err != nil {
+					t.Fatal(err)
+				}
+
+				if stats.TotalAmountMinor != 600 || stats.PersonalTotalAmountMinor != 200 || len(stats.ByMember) != 2 {
+					t.Fatalf("stats=%+v", stats)
+				}
+			}
+		})
+	}
+}

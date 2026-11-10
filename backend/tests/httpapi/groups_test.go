@@ -18,6 +18,14 @@ type groupStoreStub struct {
 	settleUp       func(context.Context, string, string, string, string, int64) error
 	settlements    func(context.Context, string, string) ([]models.Settlement, error)
 	balances       func(context.Context, string, string) ([]models.MemberBalance, error)
+	lists          func(context.Context, string, string) ([]models.GroupList, error)
+	createList     func(context.Context, string, string, models.ListInput) (models.GroupList, error)
+	deleteList     func(context.Context, string, string, string) error
+	listItems      func(context.Context, string, string, string) ([]models.ListItem, error)
+	addListItem    func(context.Context, string, string, string, models.ListItemInput) (models.ListItem, error)
+	setItemDone    func(context.Context, string, string, string, string, bool) error
+	deleteListItem func(context.Context, string, string, string, string) error
+	clearDone      func(context.Context, string, string, string) error
 	userOwed       func(context.Context, string, string, string) (models.UserOwedSummary, error)
 	userReceivable func(context.Context, string, string, string) (models.UserReceivableSummary, error)
 	deleteExpense  func(context.Context, string, string, string) error
@@ -251,6 +259,38 @@ func (s groupStoreStub) Settlements(ctx context.Context, uid, groupID string) ([
 
 func (s groupStoreStub) MemberBalances(ctx context.Context, uid, groupID string) ([]models.MemberBalance, error) {
 	return s.balances(ctx, uid, groupID)
+}
+
+func (s groupStoreStub) Lists(ctx context.Context, uid, groupID string) ([]models.GroupList, error) {
+	return s.lists(ctx, uid, groupID)
+}
+
+func (s groupStoreStub) CreateList(ctx context.Context, uid, groupID string, input models.ListInput) (models.GroupList, error) {
+	return s.createList(ctx, uid, groupID, input)
+}
+
+func (s groupStoreStub) DeleteList(ctx context.Context, uid, groupID, listID string) error {
+	return s.deleteList(ctx, uid, groupID, listID)
+}
+
+func (s groupStoreStub) ListItems(ctx context.Context, uid, groupID, listID string) ([]models.ListItem, error) {
+	return s.listItems(ctx, uid, groupID, listID)
+}
+
+func (s groupStoreStub) AddListItem(ctx context.Context, uid, groupID, listID string, input models.ListItemInput) (models.ListItem, error) {
+	return s.addListItem(ctx, uid, groupID, listID, input)
+}
+
+func (s groupStoreStub) SetListItemDone(ctx context.Context, uid, groupID, listID, itemID string, done bool) error {
+	return s.setItemDone(ctx, uid, groupID, listID, itemID, done)
+}
+
+func (s groupStoreStub) DeleteListItem(ctx context.Context, uid, groupID, listID, itemID string) error {
+	return s.deleteListItem(ctx, uid, groupID, listID, itemID)
+}
+
+func (s groupStoreStub) ClearDoneListItems(ctx context.Context, uid, groupID, listID string) error {
+	return s.clearDone(ctx, uid, groupID, listID)
 }
 
 func (s groupStoreStub) UserOwedSummary(ctx context.Context, uid, groupID, userUID string) (models.UserOwedSummary, error) {

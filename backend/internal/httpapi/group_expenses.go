@@ -39,6 +39,28 @@ func (h groupHandler) expenses(w http.ResponseWriter, r *http.Request) {
 	writeGroupJSON(w, http.StatusOK, expenses)
 }
 
+func (h groupHandler) stats(w http.ResponseWriter, r *http.Request) {
+	uid, ok := UIDFromContext(r.Context())
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	expenses, err := h.groups.Expenses(r.Context(), uid, r.PathValue("groupID"))
+	if err != nil {
+		writeExpenseError(w, err)
+		return
+	}
+
+	stats, err := models.BuildGroupStats(expenses, uid)
+	if err != nil {
+		writeGroupError(w, err)
+		return
+	}
+
+	writeGroupJSON(w, http.StatusOK, stats)
+}
+
 func (h groupHandler) createExpense(w http.ResponseWriter, r *http.Request) {
 	uid, ok := UIDFromContext(r.Context())
 	if !ok {

@@ -108,6 +108,14 @@ function GroupDetails({ user, groupID }: { user: AuthenticatedUser & { uid: stri
     router.push({ pathname: '/groups/[groupID]/people', params: { groupID } });
   }
 
+  function openStats() {
+    router.push({ pathname: '/groups/[groupID]/stats', params: { groupID } });
+  }
+
+  function openLists() {
+    router.push({ pathname: '/groups/[groupID]/lists', params: { groupID } });
+  }
+
   function openCategories() {
     closeMenu();
     router.push({ pathname: '/groups/[groupID]/categories', params: { groupID } });
@@ -160,6 +168,8 @@ function GroupDetails({ user, groupID }: { user: AuthenticatedUser & { uid: stri
               settleDisabled={expenses.saving || settlement.settling}
               onAdd={openExpense}
               onSettleUp={openSettle}
+              onStats={openStats}
+              onLists={openLists}
               onOpen={showExpenseDetails}
               onRetry={expenses.reload}
               onRetryDebts={settlement.reload}
