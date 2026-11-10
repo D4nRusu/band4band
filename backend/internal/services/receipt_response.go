@@ -14,6 +14,7 @@ import (
 
 var receiptDecimal = regexp.MustCompile(`^-?[0-9]+(?:\.[0-9]{1,2})?$`)
 var receiptCurrency = regexp.MustCompile(`^[A-Z]{3}$`)
+var receiptQuantity = regexp.MustCompile(`^([0-9]+(?:[.,][0-9]+)?)(?:\s*\p{L}+\.?)?$`)
 
 func decodeReceiptCompletion(body []byte) (models.ReceiptDraft, error) {
 	var completion struct {
@@ -46,6 +47,7 @@ func decodeReceipt(content string) (models.ReceiptDraft, error) {
 		Total    *json.RawMessage `json:"total"`
 		Items    []struct {
 			Name     string           `json:"name"`
+			Quantity json.RawMessage  `json:"quantity"`
 			Amount   *json.RawMessage `json:"amount"`
 			Discount json.RawMessage  `json:"discount"` // Line amount already includes any line discount.
 		} `json:"items"`
@@ -108,11 +110,37 @@ func decodeReceipt(content string) (models.ReceiptDraft, error) {
 		}
 
 		draft.ItemsTotalMinor = sum
-		draft.Items = append(draft.Items, models.ReceiptItem{ID: fmt.Sprintf("item-%d", i+1), Name: name, AmountMinor: amount})
+		draft.Items = append(draft.Items, models.ReceiptItem{
+			ID:          fmt.Sprintf("item-%d", i+1),
+			Name:        name,
+			Quantity:    parseReceiptQuantity(item.Quantity),
+			AmountMinor: amount,
+		})
 	}
 
 	draft.TotalsMatch = draft.ItemsTotalMinor == draft.TotalMinor
 	return draft, nil
+}
+
+func parseReceiptQuantity(raw json.RawMessage) *float64 {
+	value := string(raw)
+	if strings.HasPrefix(value, `"`) {
+		if err := json.Unmarshal(raw, &value); err != nil {
+			return nil
+		}
+	}
+
+	match := receiptQuantity.FindStringSubmatch(strings.TrimSpace(value))
+	if match == nil {
+		return nil
+	}
+
+	quantity, err := strconv.ParseFloat(strings.ReplaceAll(match[1], ",", "."), 64)
+	if err != nil || quantity <= 0 {
+		return nil
+	}
+
+	return &quantity
 }
 
 func parseReceiptAmount(raw json.RawMessage) (int64, error) {

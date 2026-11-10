@@ -19,7 +19,8 @@ type ReceiptDraft struct {
 }
 
 type ReceiptItem struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	AmountMinor int64  `json:"amountMinor"`
+	ID          string   `json:"id"`
+	Name        string   `json:"name"`
+	Quantity    *float64 `json:"quantity"`
+	AmountMinor int64    `json:"amountMinor"`
 }

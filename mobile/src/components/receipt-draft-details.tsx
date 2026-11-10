@@ -17,7 +17,12 @@ export function ReceiptDraftDetails({ draft }: { draft: ReceiptDraft }) {
       )}
       {draft.items.map((item) => (
         <View key={item.id} style={styles.row}>
-          <ThemedText style={styles.name}>{item.name}</ThemedText>
+          <View style={styles.item}>
+            <ThemedText>{item.name}</ThemedText>
+            {typeof item.quantity === 'number' && (
+              <ThemedText type="small" themeColor="textSecondary">Qty {item.quantity}</ThemedText>
+            )}
+          </View>
           <ThemedText>{signedAmount(item.amountMinor, draft.currency)}</ThemedText>
         </View>
       ))}
@@ -35,5 +40,5 @@ function signedAmount(amount: number, currency: string): string {
 const styles = StyleSheet.create({
   section: { gap: 16 },
   row: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 },
-  name: { flex: 1 },
+  item: { flex: 1 },
 });

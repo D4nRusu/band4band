@@ -3,7 +3,7 @@ import { GroupUnavailableError } from '@/lib/groups-api';
 import { createReceiptUpload } from '@/lib/receipt-upload';
 
 export type ReceiptPhoto = { uri: string; mimeType: 'image/jpeg' | 'image/png'; name: string };
-export type ReceiptItem = { id: string; name: string; amountMinor: number };
+export type ReceiptItem = { id: string; name: string; quantity?: number | null; amountMinor: number };
 export type ReceiptDraft = {
   currency: string;
   totalMinor: number;
@@ -67,6 +67,10 @@ function isReceiptItem(value: unknown): value is ReceiptItem {
   if (!value || typeof value !== 'object') return false;
 
   const item = value as Record<string, unknown>;
+  const { quantity } = item;
+  if (quantity !== undefined && quantity !== null
+    && (typeof quantity !== 'number' || !Number.isFinite(quantity) || quantity <= 0)) return false;
+
   return typeof item.id === 'string' && item.id.length > 0
     && typeof item.name === 'string' && item.name.trim().length > 0 && Array.from(item.name).length <= 200
     && typeof item.amountMinor === 'number' && Number.isSafeInteger(item.amountMinor);

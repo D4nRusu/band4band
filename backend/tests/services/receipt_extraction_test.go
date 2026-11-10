@@ -131,13 +131,15 @@ func TestReceiptResponseValidation(t *testing.T) {
 	}
 }
 
-func TestReceiptMixedAmountsAndLineDiscount(t *testing.T) {
+func TestReceiptMixedAmountsQuantitiesAndLineDiscount(t *testing.T) {
 	const receipt = `{"currency":"LEI","total":166.78,"items":[
-		{"name":"Cable","amount":"24.10"},
-		{"name":"Cable ties","amount":"11.66"},
-		{"name":"Extension cord","amount":"17.35","discount":-0.75},
-		{"name":"Crimping tool","amount":59.00},
-		{"name":"Screwdrivers","amount":"34.71"},
+		{"name":"Cable","quantity":"0,75 kg","amount":"24.10"},
+		{"name":"Cable ties","quantity":"2 pun","amount":"11.66"},
+		{"name":"Extension cord","quantity":"3 buc","amount":"17.35","discount":-0.75},
+		{"name":"Crimping tool","quantity":1,"amount":59.00},
+		{"name":"Screwdrivers","quantity":"2 set","amount":"34.71"},
+		{"name":"Unreadable quantity","quantity":null,"amount":"0.00"},
+		{"name":"Invalid quantity","quantity":"0 buc","amount":"0.00"},
 		{"name":"Connectors","amount":"19.96"}
 	]}`
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -154,12 +156,24 @@ func TestReceiptMixedAmountsAndLineDiscount(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if draft.Currency != "RON" || draft.TotalMinor != 16678 || draft.ItemsTotalMinor != 16678 || !draft.TotalsMatch || len(draft.Items) != 6 {
+	if draft.Currency != "RON" || draft.TotalMinor != 16678 || draft.ItemsTotalMinor != 16678 || !draft.TotalsMatch || len(draft.Items) != 8 {
 		t.Fatalf("draft=%+v", draft)
 	}
 
 	if draft.Items[2].AmountMinor != 1735 || draft.Items[3].AmountMinor != 5900 {
 		t.Fatalf("items=%+v", draft.Items)
+	}
+
+	for i, want := range []float64{0.75, 2, 3, 1, 2} {
+		if got := draft.Items[i].Quantity; got == nil || *got != want {
+			t.Errorf("item %d quantity = %v, want %g", i+1, got, want)
+		}
+	}
+
+	for _, item := range draft.Items[5:] {
+		if item.Quantity != nil {
+			t.Errorf("%s should have no quantity", item.Name)
+		}
 	}
 }
 

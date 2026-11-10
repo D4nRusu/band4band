@@ -94,13 +94,15 @@ Example successful response (illustrative receipt):
   "itemsTotalMinor": 1850,
   "totalsMatch": true,
   "items": [
-    { "id": "item-1", "name": "Pizza", "amountMinor": 1200 },
-    { "id": "item-2", "name": "Drink", "amountMinor": 650 }
+    { "id": "item-1", "name": "Pizza", "quantity": 1, "amountMinor": 1200 },
+    { "id": "item-2", "name": "Drink", "quantity": 2, "amountMinor": 650 }
   ]
 }
 ```
 
 Item IDs identify rows within that draft only; nothing is persisted. Prices are full line totals after any line discount. Go accepts decimal strings and JSON numbers and converts them to integer cents without floating-point arithmetic. An extra `discount` field on an item is ignored because its `amount` already represents the net line total. Individual values and running item totals must fit the application's JavaScript-safe integer range.
+
+`quantity` is the positive numeric multiplier printed for the line. It may be fractional for weighed items. Go also accepts quoted values such as `"2 buc"` and `"0,75 kg"`, keeping only the number. Missing, unreadable, or invalid quantities are returned as `null` and omitted from the mobile display. Quantity never changes the extracted line total or its contribution to the sum.
 
 Go normalizes `LEI` to `RON`. The read-only preview uses the receipt currency even when the group uses a different currency. Missing or unreadable required information produces an error rather than guessing the currency or total. A different item sum is still returned with `totalsMatch: false`, preserving the printed total and item values for later user review. Separately printed discounts can appear as negative draft lines; their eventual allocation rules are outside this milestone. JSON/schema validation does not establish that the image was read accurately.
 
