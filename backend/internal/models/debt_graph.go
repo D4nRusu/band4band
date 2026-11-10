@@ -12,6 +12,9 @@ var (
 	ErrDebtOverflow       = errors.New("debt amount exceeds the supported integer range")
 	ErrDebtUnderflow      = errors.New("expense reversal exceeds the recorded debt")
 	ErrInvalidDebtExpense = errors.New("expense allocations are inconsistent with the debt graph")
+	ErrInvalidDebtUser    = errors.New("the selected user must be a current group member")
+	ErrInvalidDebtAmount  = errors.New("amount must be a positive integer in cents within the supported range")
+	ErrSettlementNotParty = errors.New("you can only record a settlement you paid or received")
 )
 
 type DebtNeighbor struct {
@@ -23,6 +26,30 @@ type DebtGraph struct {
 	Currency  string                    `firestore:"currency"`
 	Adjacency map[string][]DebtNeighbor `firestore:"adjacency"`
 	UpdatedAt time.Time                 `firestore:"updatedAt"`
+}
+
+type UserOwedDebt struct {
+	ToUID       string `json:"toUID"`
+	AmountMinor int64  `json:"amountMinor"`
+}
+
+type UserOwedSummary struct {
+	UserUID          string         `json:"userUID"`
+	Currency         string         `json:"currency"`
+	TotalAmountMinor int64          `json:"totalAmountMinor"`
+	Debts            []UserOwedDebt `json:"debts"`
+}
+
+type UserReceivableDebt struct {
+	FromUID     string `json:"fromUID"`
+	AmountMinor int64  `json:"amountMinor"`
+}
+
+type UserReceivableSummary struct {
+	UserUID          string               `json:"userUID"`
+	Currency         string               `json:"currency"`
+	TotalAmountMinor int64                `json:"totalAmountMinor"`
+	Debts            []UserReceivableDebt `json:"debts"`
 }
 
 func (graph DebtGraph) Validate() error {
