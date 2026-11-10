@@ -8,16 +8,18 @@ import { CreateExpenseModal } from '@/components/create-expense-modal';
 import { GroupExpenseList } from '@/components/group-expense-list';
 import { EditGroupModal } from '@/components/edit-group-modal';
 import { GroupBanner } from '@/components/group-banner';
-import { GroupMembersModal } from '@/components/group-members-modal';
 import { GroupSettingsModal } from '@/components/group-settings-modal';
-import { InviteUserModal } from '@/components/invite-user-modal';
+import { SettleUpModal } from '@/components/settle-up-modal';
 import { ThemedText } from '@/components/themed-text';
 import { useAuthSession } from '@/hooks/use-auth-session.android';
 import { useGroupExpenses } from '@/hooks/use-group-expenses';
 import { useGroupDetails } from '@/hooks/use-group-details';
+import { useGroupMembers } from '@/hooks/use-group-members';
+import { useGroupSettlement } from '@/hooks/use-group-settlement';
 import { useTheme } from '@/hooks/use-theme';
 import type { AuthenticatedUser } from '@/lib/api';
 import type { Group } from '@/lib/groups-api';
+import type { SettleUpInput } from '@/lib/settlements-api';
 import type { Expense } from '@/lib/expenses-api';
 
 function backToGroups() {
@@ -58,8 +60,10 @@ export default function GroupDetailsScreen() {
 
 function GroupDetails({ user, groupID }: { user: AuthenticatedUser & { uid: string }; groupID: string }) {
   const { group, loading, error, reload, applyUpdate } = useGroupDetails(user, groupID);
+  const members = useGroupMembers(user, groupID);
   const expenses = useGroupExpenses(user, groupID);
-  const [menu, setMenu] = useState<'members' | 'invite' | 'settings' | 'edit' | 'expense' | 'expense-details' | null>(null);
+  const settlement = useGroupSettlement(user, groupID);
+  const [menu, setMenu] = useState<'settings' | 'edit' | 'expense' | 'expense-details' | 'settle' | null>(null);
 
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
 
@@ -70,7 +74,9 @@ function GroupDetails({ user, groupID }: { user: AuthenticatedUser & { uid: stri
 
   function refreshAll() {
     reload();
+    members.retry();
     expenses.reload();
+    settlement.reload();
   }
 
   function showExpenseDetails(expense: Expense) {
@@ -88,9 +94,18 @@ function GroupDetails({ user, groupID }: { user: AuthenticatedUser & { uid: stri
     setMenu('expense');
   }
 
+  function openSettle() {
+    settlement.clearSettleError();
+    setMenu('settle');
+  }
+
   function closeExpense() {
     closeMenu();
     expenses.reload();
+  }
+
+  function openPeople() {
+    router.push({ pathname: '/groups/[groupID]/people', params: { groupID } });
   }
 
   function openCategories() {
@@ -103,15 +118,52 @@ function GroupDetails({ user, groupID }: { user: AuthenticatedUser & { uid: stri
     setMenu('settings');
   }
 
+  const memberNameByUID = new Map(members.members.map((member) => [member.uid, member.name]));
+  const owedDebts = (settlement.owedSummary?.debts ?? []).map((debt) => ({
+    toUID: debt.toUID,
+    toName: memberNameByUID.get(debt.toUID) ?? 'Unknown member',
+    amountMinor: debt.amountMinor,
+  }));
+
+  const receivableDebts = (settlement.receivableSummary?.debts ?? []).map((debt) => ({
+    fromUID: debt.fromUID,
+    fromName: memberNameByUID.get(debt.fromUID) ?? 'Unknown member',
+    amountMinor: debt.amountMinor,
+  }));
+
+  async function submitSettlement(input: SettleUpInput) {
+    const settled = await settlement.settle(input);
+    if (settled) expenses.reload();
+
+    return settled;
+  }
+
   return (
     <>
-      <ScrollView refreshControl={<RefreshControl refreshing={loading || expenses.loading} onRefresh={refreshAll} />}>
+      <ScrollView refreshControl={<RefreshControl refreshing={loading || expenses.loading || settlement.loading} onRefresh={refreshAll} />}>
         {group && (
           <>
             <GroupBanner group={group} onBack={backToGroups}
-              onPeoplePress={() => setMenu('members')} onSettingsPress={() => setMenu('settings')} />
-            <GroupExpenseList expenses={expenses.expenses} loading={expenses.loading} error={expenses.error}
-              saving={expenses.saving} onAdd={openExpense} onOpen={showExpenseDetails} onRetry={expenses.reload} />
+              onPeoplePress={openPeople} onSettingsPress={() => setMenu('settings')} />
+            <GroupExpenseList
+              currentUID={user.uid}
+              expenses={expenses.expenses}
+              settlements={settlement.settlements}
+                debts={owedDebts}
+                receivables={receivableDebts}
+                debtCurrency={settlement.owedSummary?.currency ?? settlement.receivableSummary?.currency ?? group.currency}
+              debtsLoading={settlement.loading}
+              debtsError={settlement.error}
+              loading={expenses.loading}
+              error={expenses.error}
+              saving={expenses.saving}
+              settleDisabled={expenses.saving || settlement.settling}
+              onAdd={openExpense}
+              onSettleUp={openSettle}
+              onOpen={showExpenseDetails}
+              onRetry={expenses.reload}
+              onRetryDebts={settlement.reload}
+            />
           </>
         )}
 
@@ -140,12 +192,21 @@ function GroupDetails({ user, groupID }: { user: AuthenticatedUser & { uid: stri
           onSave={expenses.save} onClose={closeExpense} />
       )}
 
-      {group && menu === 'members' && (
-        <GroupMembersModal user={user} group={group} onClose={closeMenu} onInvite={() => setMenu('invite')} />
-      )}
-
-      {group && menu === 'invite' && (
-        <InviteUserModal user={user} group={group} onClose={() => setMenu('members')} />
+      {group && menu === 'settle' && (
+        <SettleUpModal
+          currentUID={user.uid}
+          currency={group.currency}
+          members={members.members}
+          membersLoading={members.loading}
+          membersError={members.error}
+          debts={owedDebts}
+          receivables={receivableDebts}
+          saving={settlement.settling}
+          error={settlement.settleError}
+          onRetryMembers={members.retry}
+          onSettle={submitSettlement}
+          onClose={closeMenu}
+        />
       )}
 
       {group && menu === 'edit' && (

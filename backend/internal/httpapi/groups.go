@@ -10,6 +10,11 @@ import (
 )
 
 type GroupStore interface {
+	SettleUp(context.Context, string, string, string, string, int64) error
+	Settlements(context.Context, string, string) ([]models.Settlement, error)
+	MemberBalances(context.Context, string, string) ([]models.MemberBalance, error)
+	UserOwedSummary(context.Context, string, string, string) (models.UserOwedSummary, error)
+	UserReceivableSummary(context.Context, string, string, string) (models.UserReceivableSummary, error)
 	DeleteExpense(context.Context, string, string, string) error
 	Expenses(context.Context, string, string) ([]models.Expense, error)
 	CreateExpense(context.Context, string, string, models.ExpenseInput) (models.Expense, error)

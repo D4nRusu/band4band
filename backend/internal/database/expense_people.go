@@ -26,6 +26,20 @@ func (s *GroupStore) expensePeople(tx *firestore.Transaction, group models.Group
 		}
 	}
 
+	names, err := s.userNames(tx, uids)
+	if err != nil {
+		return "", nil, err
+	}
+
+	for i := range contributions {
+		contributions[i].Name = names[contributions[i].UID]
+	}
+
+	return names[input.PaidBy], contributions, nil
+}
+
+// userNames snapshots display names so history stays readable after profile changes.
+func (s *GroupStore) userNames(tx *firestore.Transaction, uids []string) (map[string]string, error) {
 	refs := make([]*firestore.DocumentRef, 0, len(uids))
 	for _, uid := range uids {
 		refs = append(refs, s.db.Collection("users").Doc(uid))
@@ -33,7 +47,7 @@ func (s *GroupStore) expensePeople(tx *firestore.Transaction, group models.Group
 
 	snapshots, err := tx.GetAll(refs)
 	if err != nil {
-		return "", nil, err
+		return nil, err
 	}
 
 	names := make(map[string]string, len(uids))
@@ -46,7 +60,7 @@ func (s *GroupStore) expensePeople(tx *firestore.Transaction, group models.Group
 
 		var profile models.User
 		if err := snapshot.DataTo(&profile); err != nil {
-			return "", nil, err
+			return nil, err
 		}
 
 		if profile.Name != "" {
@@ -56,9 +70,5 @@ func (s *GroupStore) expensePeople(tx *firestore.Transaction, group models.Group
 		}
 	}
 
-	for i := range contributions {
-		contributions[i].Name = names[contributions[i].UID]
-	}
-
-	return names[input.PaidBy], contributions, nil
+	return names, nil
 }

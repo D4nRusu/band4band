@@ -12,6 +12,9 @@ var (
 	ErrDebtOverflow       = errors.New("debt amount exceeds the supported integer range")
 	ErrDebtUnderflow      = errors.New("expense reversal exceeds the recorded debt")
 	ErrInvalidDebtExpense = errors.New("expense allocations are inconsistent with the debt graph")
+	ErrInvalidDebtUser    = errors.New("the selected user must be a current group member")
+	ErrInvalidDebtAmount  = errors.New("amount must be a positive integer in cents within the supported range")
+	ErrSettlementNotParty = errors.New("you can only record a settlement you paid or received")
 )
 
 type DebtNeighbor struct {
@@ -23,6 +26,36 @@ type DebtGraph struct {
 	Currency  string                    `firestore:"currency"`
 	Adjacency map[string][]DebtNeighbor `firestore:"adjacency"`
 	UpdatedAt time.Time                 `firestore:"updatedAt"`
+}
+
+type UserOwedDebt struct {
+	ToUID       string `json:"toUID"`
+	AmountMinor int64  `json:"amountMinor"`
+}
+
+type UserOwedSummary struct {
+	UserUID          string         `json:"userUID"`
+	Currency         string         `json:"currency"`
+	TotalAmountMinor int64          `json:"totalAmountMinor"`
+	Debts            []UserOwedDebt `json:"debts"`
+}
+
+// MemberBalance is positive when the member is owed money and negative when they owe.
+type MemberBalance struct {
+	UID            string `json:"uid"`
+	NetAmountMinor int64  `json:"netAmountMinor"`
+}
+
+type UserReceivableDebt struct {
+	FromUID     string `json:"fromUID"`
+	AmountMinor int64  `json:"amountMinor"`
+}
+
+type UserReceivableSummary struct {
+	UserUID          string               `json:"userUID"`
+	Currency         string               `json:"currency"`
+	TotalAmountMinor int64                `json:"totalAmountMinor"`
+	Debts            []UserReceivableDebt `json:"debts"`
 }
 
 func (graph DebtGraph) Validate() error {
@@ -152,4 +185,26 @@ func (graph *DebtGraph) ApplyExpense(expense Expense, reverse bool) error {
 
 	graph.Adjacency = updated.Adjacency
 	return nil
+}
+
+// NetBalances sums each member's incoming minus outgoing debts. Members without debts get zero.
+func (graph DebtGraph) NetBalances(memberUIDs []string) ([]MemberBalance, error) {
+	net := make(map[string]int64, len(memberUIDs))
+	for fromUID, creditors := range graph.Adjacency {
+		for _, debt := range creditors {
+			if net[fromUID] < math.MinInt64+debt.AmountMinor || net[debt.ToUID] > math.MaxInt64-debt.AmountMinor {
+				return nil, ErrDebtOverflow
+			}
+
+			net[fromUID] -= debt.AmountMinor
+			net[debt.ToUID] += debt.AmountMinor
+		}
+	}
+
+	balances := make([]MemberBalance, 0, len(memberUIDs))
+	for _, uid := range memberUIDs {
+		balances = append(balances, MemberBalance{UID: uid, NetAmountMinor: net[uid]})
+	}
+
+	return balances, nil
 }

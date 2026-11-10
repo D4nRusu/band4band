@@ -215,3 +215,37 @@ func TestDebtorHasMultipleCreditors(t *testing.T) {
 		t.Fatalf("unexpected remaining debts: %+v", graph.Adjacency)
 	}
 }
+
+func TestNetBalances(t *testing.T) {
+	graph := models.DebtGraph{Currency: "EUR", Adjacency: map[string][]models.DebtNeighbor{
+		"alice": {{ToUID: "bob", AmountMinor: 700}, {ToUID: "charlie", AmountMinor: 300}},
+		"bob":   {{ToUID: "charlie", AmountMinor: 200}},
+	}}
+
+	balances, err := graph.NetBalances([]string{"alice", "bob", "charlie", "dana"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	want := map[string]int64{"alice": -1000, "bob": 500, "charlie": 500, "dana": 0}
+	if len(balances) != len(want) {
+		t.Fatalf("balances=%+v", balances)
+	}
+
+	for _, balance := range balances {
+		if balance.NetAmountMinor != want[balance.UID] {
+			t.Fatalf("%s = %d, want %d", balance.UID, balance.NetAmountMinor, want[balance.UID])
+		}
+	}
+}
+
+func TestNetBalancesRejectsOverflow(t *testing.T) {
+	graph := models.DebtGraph{Currency: "EUR", Adjacency: map[string][]models.DebtNeighbor{
+		"alice": {{ToUID: "charlie", AmountMinor: math.MaxInt64}},
+		"bob":   {{ToUID: "charlie", AmountMinor: 1}},
+	}}
+
+	if _, err := graph.NetBalances([]string{"alice", "bob", "charlie"}); !errors.Is(err, models.ErrDebtOverflow) {
+		t.Fatalf("err=%v", err)
+	}
+}
