@@ -1,5 +1,7 @@
 PAAM project
 
+New collaborator? Start with the [quick-start guide](docs/getting-started.md).
+
 # Specs
 
 - App: React Native
