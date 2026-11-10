@@ -29,3 +29,11 @@ PAAM project
 - Location where you added the expense
 - Achievements (drank 1000000 beers)
 - Tasks (wash the pan, who does it, basically todo)
+- QR scan for group invite
+
+# Packages to add
+
+expo-location
+expo-sensors
+react-native-svg
+expo-camera
