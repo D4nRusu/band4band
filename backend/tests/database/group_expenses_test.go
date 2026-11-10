@@ -232,3 +232,42 @@ func TestExpenseDeletionPreservesHistory(t *testing.T) {
 		t.Fatalf("former member deletion=%v", err)
 	}
 }
+
+func TestExpenseGroupIDComesFromPath(t *testing.T) {
+	_, db, ctx := emulatorStore(t)
+	groups := database.NewGroupStore(db)
+	group, err := groups.Create(ctx, "owner", models.GroupInput{Name: "Trip"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expense, err := groups.CreateExpense(ctx, "owner", group.ID, models.ExpenseInput{
+		Name: "Lunch", CategoryID: "default_food", PaidBy: "owner", AmountMinor: 100, ParticipantUIDs: []string{"owner"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if expense.GroupID != group.ID {
+		t.Fatalf("created groupID=%q", expense.GroupID)
+	}
+
+	ref := db.Collection("groups").Doc(group.ID).Collection("expenses").Doc(expense.ID)
+	snapshot, err := ref.Get(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, exists := snapshot.Data()["groupID"]; exists {
+		t.Fatal("redundant groupID stored")
+	}
+
+	if _, err := ref.Update(ctx, []firestore.Update{{Path: "groupID", Value: "incorrect-legacy-value"}}); err != nil {
+		t.Fatal(err)
+	}
+
+	expenses, err := groups.Expenses(ctx, "owner", group.ID)
+	if err != nil || len(expenses) != 1 || expenses[0].GroupID != group.ID {
+		t.Fatalf("path groupID not used: %+v err=%v", expenses, err)
+	}
+}

@@ -37,7 +37,7 @@ type Expense struct {
 	DeletedAt      time.Time             `json:"-" firestore:"deletedAt,omitempty"`
 	DeletedBy      string                `json:"-" firestore:"deletedBy,omitempty"`
 	ID             string                `json:"id" firestore:"-"`
-	GroupID        string                `json:"groupID" firestore:"groupID"`
+	GroupID        string                `json:"groupID" firestore:"-"`
 	Name           string                `json:"name" firestore:"name"`
 	CategoryID     string                `json:"categoryID" firestore:"categoryID"`
 	CategoryName   string                `json:"categoryName" firestore:"categoryName"`

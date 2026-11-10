@@ -39,6 +39,7 @@ func (s *GroupStore) Expenses(ctx context.Context, uid, groupID string) ([]model
 			}
 
 			expense.ID = snapshot.Ref.ID
+			expense.GroupID = groupID
 			expenses = append(expenses, expense)
 		}
 
@@ -102,7 +103,6 @@ func (s *GroupStore) CreateExpense(ctx context.Context, uid, groupID string, inp
 		if err := tx.Create(expenseRef, map[string]any{
 			"splitType":     "equal",
 			"contributions": contributions,
-			"groupID":       groupID,
 			"name":          input.Name,
 			"categoryID":    category.ID,
 			"categoryName":  category.Name,
@@ -139,6 +139,7 @@ func (s *GroupStore) CreateExpense(ctx context.Context, uid, groupID string, inp
 	}
 
 	expense.ID = expenseRef.ID
+	expense.GroupID = groupID
 	return expense, nil
 }
 
