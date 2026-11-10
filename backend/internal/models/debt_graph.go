@@ -14,16 +14,15 @@ var (
 	ErrInvalidDebtExpense = errors.New("expense allocations are inconsistent with the debt graph")
 )
 
-type DebtEdge struct {
-	FromUID     string `firestore:"fromUID"`
+type DebtNeighbor struct {
 	ToUID       string `firestore:"toUID"`
 	AmountMinor int64  `firestore:"amountMinor"`
 }
 
 type DebtGraph struct {
-	Currency  string     `firestore:"currency"`
-	Edges     []DebtEdge `firestore:"edges"`
-	UpdatedAt time.Time  `firestore:"updatedAt"`
+	Currency  string                    `firestore:"currency"`
+	Adjacency map[string][]DebtNeighbor `firestore:"adjacency"`
+	UpdatedAt time.Time                 `firestore:"updatedAt"`
 }
 
 func (graph DebtGraph) Validate() error {
@@ -31,14 +30,19 @@ func (graph DebtGraph) Validate() error {
 		return ErrInvalidDebtGraph
 	}
 
-	seen := make(map[[2]string]bool, len(graph.Edges))
-	for _, edge := range graph.Edges {
-		pair := [2]string{edge.FromUID, edge.ToUID}
-		if edge.FromUID == "" || edge.ToUID == "" || edge.FromUID == edge.ToUID || edge.AmountMinor <= 0 || seen[pair] {
+	for fromUID, creditors := range graph.Adjacency {
+		if fromUID == "" || len(creditors) == 0 {
 			return ErrInvalidDebtGraph
 		}
 
-		seen[pair] = true
+		seen := make(map[string]bool, len(creditors))
+		for _, debt := range creditors {
+			if debt.ToUID == "" || fromUID == debt.ToUID || debt.AmountMinor <= 0 || seen[debt.ToUID] {
+				return ErrInvalidDebtGraph
+			}
+
+			seen[debt.ToUID] = true
+		}
 	}
 
 	return nil
@@ -55,34 +59,47 @@ func (graph *DebtGraph) AdjustEdge(fromUID, toUID string, delta int64) error {
 		return nil
 	}
 
-	for i, edge := range graph.Edges {
-		if edge.FromUID != fromUID || edge.ToUID != toUID {
-			continue
-		}
+	creditors := graph.Adjacency[fromUID]
+	index := slices.IndexFunc(creditors, func(debt DebtNeighbor) bool {
+		return debt.ToUID == toUID
+	})
 
-		if delta > 0 && delta > math.MaxInt64-edge.AmountMinor {
-			return ErrDebtOverflow
-		}
+	var amount int64
+	if index >= 0 {
+		amount = creditors[index].AmountMinor
+	}
 
-		if delta < -edge.AmountMinor {
-			return ErrDebtUnderflow
-		}
+	if delta > 0 && delta > math.MaxInt64-amount {
+		return ErrDebtOverflow
+	}
 
-		balance := edge.AmountMinor + delta
-		if balance == 0 {
-			graph.Edges = slices.Delete(graph.Edges, i, i+1)
+	if delta < -amount {
+		return ErrDebtUnderflow
+	}
+
+	balance := amount + delta
+	if balance == 0 {
+		creditors = slices.Delete(creditors, index, index+1)
+		if len(creditors) == 0 {
+			delete(graph.Adjacency, fromUID)
 		} else {
-			graph.Edges[i].AmountMinor = balance
+			graph.Adjacency[fromUID] = creditors
 		}
 
 		return nil
 	}
 
-	if delta < 0 {
-		return ErrDebtUnderflow
+	if graph.Adjacency == nil {
+		graph.Adjacency = make(map[string][]DebtNeighbor)
 	}
 
-	graph.Edges = append(graph.Edges, DebtEdge{FromUID: fromUID, ToUID: toUID, AmountMinor: delta})
+	if index >= 0 {
+		creditors[index].AmountMinor = balance
+	} else {
+		creditors = append(creditors, DebtNeighbor{ToUID: toUID, AmountMinor: balance})
+	}
+
+	graph.Adjacency[fromUID] = creditors
 	return nil
 }
 
@@ -113,7 +130,11 @@ func (graph *DebtGraph) ApplyExpense(expense Expense, reverse bool) error {
 	}
 
 	updated := *graph
-	updated.Edges = slices.Clone(graph.Edges)
+	updated.Adjacency = make(map[string][]DebtNeighbor, len(graph.Adjacency))
+	for uid, creditors := range graph.Adjacency {
+		updated.Adjacency[uid] = slices.Clone(creditors)
+	}
+
 	for _, share := range expense.Contributions {
 		if share.UID == expense.PaidBy || share.AmountMinor == 0 {
 			continue
@@ -129,6 +150,6 @@ func (graph *DebtGraph) ApplyExpense(expense Expense, reverse bool) error {
 		}
 	}
 
-	graph.Edges = updated.Edges
+	graph.Adjacency = updated.Adjacency
 	return nil
 }

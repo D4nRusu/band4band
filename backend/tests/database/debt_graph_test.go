@@ -40,9 +40,9 @@ func readStoredGraph(t *testing.T, db *firestore.Client, ctx context.Context, gr
 func checkDebt(t *testing.T, graph models.DebtGraph, from, to string, want int64) {
 	t.Helper()
 	var amount int64
-	for _, edge := range graph.Edges {
-		if edge.FromUID == from && edge.ToUID == to {
-			amount = edge.AmountMinor
+	for _, debt := range graph.Adjacency[from] {
+		if debt.ToUID == to {
+			amount = debt.AmountMinor
 		}
 	}
 
@@ -108,8 +108,8 @@ func TestGraphUpdatesAndReversesWithoutNetting(t *testing.T) {
 		}
 	}
 
-	if graph := readStoredGraph(t, db, ctx, group.ID); len(graph.Edges) != 0 {
-		t.Fatalf("edges=%+v", graph.Edges)
+	if graph := readStoredGraph(t, db, ctx, group.ID); len(graph.Adjacency) != 0 {
+		t.Fatalf("edges=%+v", graph.Adjacency)
 	}
 }
 
@@ -168,7 +168,7 @@ func TestGraphInitializesOnlyWhenMissing(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := debtRef(db, group.ID).Update(ctx, []firestore.Update{{Path: "edges", Value: graph.Edges}}); err != nil {
+	if _, err := debtRef(db, group.ID).Update(ctx, []firestore.Update{{Path: "adjacency", Value: graph.Adjacency}}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -233,7 +233,7 @@ func TestInvalidGraphAbortsExpenseChanges(t *testing.T) {
 	groups := database.NewGroupStore(db)
 	group := graphGroup(t, groups, db, ctx)
 	expense := graphExpense(t, groups, ctx, group.ID, "alice", 1000, "bob")
-	if _, err := debtRef(db, group.ID).Update(ctx, []firestore.Update{{Path: "edges", Value: []models.DebtEdge{}}}); err != nil {
+	if _, err := debtRef(db, group.ID).Update(ctx, []firestore.Update{{Path: "adjacency", Value: map[string][]models.DebtNeighbor{}}}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -269,5 +269,73 @@ func TestInvalidGraphAbortsExpenseChanges(t *testing.T) {
 	all, err := db.Collection("groups").Doc(group.ID).Collection("expenses").Documents(ctx).GetAll()
 	if err != nil || len(all) != 1 {
 		t.Fatalf("failed transaction saved expense: count=%d err=%v", len(all), err)
+	}
+}
+
+func TestExistingEdgeListConvertsWithoutRebuilding(t *testing.T) {
+	_, db, ctx := emulatorStore(t)
+	groups := database.NewGroupStore(db)
+	group := graphGroup(t, groups, db, ctx)
+	graphExpense(t, groups, ctx, group.ID, "alice", 1000, "bob")
+
+	// Preserve the stored graph, even when it differs from an expense replay.
+	if _, err := debtRef(db, group.ID).Set(ctx, map[string]any{
+		"currency":  "EUR",
+		"updatedAt": firestore.ServerTimestamp,
+		"edges": []map[string]any{
+			{"fromUID": "bob", "toUID": "alice", "amountMinor": int64(1200)},
+			{"fromUID": "alice", "toUID": "bob", "amountMinor": int64(300)},
+		},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := groups.Expenses(ctx, "alice", group.ID); err != nil {
+		t.Fatal(err)
+	}
+
+	graph := readStoredGraph(t, db, ctx, group.ID)
+	checkDebt(t, graph, "bob", "alice", 1200)
+	checkDebt(t, graph, "alice", "bob", 300)
+	snapshot, err := debtRef(db, group.ID).Get(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, exists := snapshot.Data()["edges"]; exists {
+		t.Fatal("converted graph retained old edge list")
+	}
+
+	graphExpense(t, groups, ctx, group.ID, "alice", 500, "bob")
+	checkDebt(t, readStoredGraph(t, db, ctx, group.ID), "bob", "alice", 1700)
+}
+
+func TestExistingDebtMapConvertsToNeighborLists(t *testing.T) {
+	_, db, ctx := emulatorStore(t)
+	groups := database.NewGroupStore(db)
+	group := graphGroup(t, groups, db, ctx)
+	graphExpense(t, groups, ctx, group.ID, "alice", 1000, "bob")
+
+	if _, err := debtRef(db, group.ID).Set(ctx, map[string]any{
+		"currency": "EUR",
+		"adjacency": map[string]map[string]int64{
+			"bob":   {"alice": 1200, "charlie": 500},
+			"alice": {"bob": 300},
+		},
+		"updatedAt": firestore.ServerTimestamp,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := groups.Expenses(ctx, "alice", group.ID); err != nil {
+		t.Fatal(err)
+	}
+
+	graph := readStoredGraph(t, db, ctx, group.ID)
+	checkDebt(t, graph, "bob", "alice", 1200)
+	checkDebt(t, graph, "bob", "charlie", 500)
+	checkDebt(t, graph, "alice", "bob", 300)
+	if len(graph.Adjacency["bob"]) != 2 {
+		t.Fatalf("expected two outgoing debts: %+v", graph.Adjacency["bob"])
 	}
 }

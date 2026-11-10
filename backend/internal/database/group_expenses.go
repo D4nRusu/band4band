@@ -28,7 +28,7 @@ func (s *GroupStore) Expenses(ctx context.Context, uid, groupID string) ([]model
 			return err
 		}
 
-		graph, initialized, err := s.loadDebtGraph(tx, groupID, group.Currency)
+		graph, needsWrite, err := s.loadDebtGraph(tx, groupID, group.Currency)
 		if err != nil {
 			return err
 		}
@@ -49,7 +49,7 @@ func (s *GroupStore) Expenses(ctx context.Context, uid, groupID string) ([]model
 			expenses = append(expenses, expense)
 		}
 
-		if initialized && len(snapshots) > 0 {
+		if needsWrite && (len(snapshots) > 0 || len(graph.Adjacency) > 0) {
 			return s.writeDebtGraph(tx, groupID, graph)
 		}
 
