@@ -1,6 +1,6 @@
 # Receipt extraction endpoint
 
-This milestone extracts an editable draft from a receipt photo. It does not create expenses, assign contributors, change debts, or save images. Mobile camera capture, item assignment, and private receipt storage are later milestones. The existing `chat.sh` remains a manual llama-cli utility; Go does not execute it.
+This milestone extracts a draft from a receipt photo and displays it in the mobile app. It does not create expenses, assign contributors, change debts, or save images in cloud storage. Draft editing, item assignment, and private receipt storage are later milestones. The existing `chat.sh` remains a manual llama-cli utility; Go does not execute it.
 
 ## Start the model server
 
@@ -16,7 +16,7 @@ Then, from the repository root, start the model with:
 
 No exports or model-path arguments are needed in subsequent terminals. The launcher finds `backend/.env` relative to its own location, so invoking it by its absolute path works from any directory. It runs in the foreground; keep the terminal open and use Ctrl+C to stop it.
 
-The defaults are GPU layers 99, context 40960, thinking off, model alias `receipts`, and loopback port 8081. Optional `RECEIPT_LLM_GPU_LAYERS`, `RECEIPT_LLM_CONTEXT`, and `RECEIPT_LLM_PORT` settings override these values; `RECEIPT_LLM_MODEL` controls the alias used by both Go and the launcher. If you change the port, update `RECEIPT_LLM_URL` to match. The launcher validates the required paths and executable before starting. It does not download models or start Go/Expo.
+The defaults are GPU layers 99, context 40960, thinking off, model alias `receipts`, and loopback port 8082. Optional `RECEIPT_LLM_GPU_LAYERS`, `RECEIPT_LLM_CONTEXT`, and `RECEIPT_LLM_PORT` settings override these values; `RECEIPT_LLM_MODEL` controls the alias used by both Go and the launcher. If you change the port, update `RECEIPT_LLM_URL` to match. The launcher validates the required paths and executable before starting. It does not download models or start Go/Expo.
 
 The GPU/context defaults match the existing script; adjust them for the server's available memory if necessary. Go connects to the model over HTTP rather than loading a model per upload. Use a llama.cpp version that supports multimodal chat completions and JSON-schema response formatting. These capabilities vary by installed build/model and still require a live check with your files. See [multimodal support](https://github.com/ggml-org/llama.cpp/blob/master/docs/multimodal.md) and [server documentation](https://github.com/ggml-org/llama.cpp/tree/master/tools/server).
 
@@ -27,7 +27,7 @@ The model server should remain private to the backend. If Go and llama-server ru
 Keep these settings in the same local `backend/.env`; Go loads them automatically when started from `backend/`:
 
 ```dotenv
-RECEIPT_LLM_URL=http://127.0.0.1:8081/v1/chat/completions
+RECEIPT_LLM_URL=http://127.0.0.1:8082/v1/chat/completions
 RECEIPT_LLM_MODEL=receipts
 ```
 
@@ -38,9 +38,41 @@ cd backend
 go run .
 ```
 
-If `RECEIPT_LLM_URL` is unset, the rest of the application works normally and extraction returns 503 for an authorized group member. A configured URL requires a model name; malformed configuration fails startup with a configuration error. No new Go dependencies, Firebase configuration, Storage bucket, or APK build are needed for this endpoint.
+If `RECEIPT_LLM_URL` is unset, the rest of the application works normally and extraction returns 503 for an authorized group member. A configured URL requires a model name; malformed configuration fails startup with a configuration error. The Go endpoint needs no new Go dependencies, Firebase configuration, or Storage bucket. The mobile photo picker does require the APK rebuild described below.
 
-## Make a request
+## Scan from the Android app
+
+The group page now has a **From receipt** button beside Add expense. Open it, take a photo or choose an existing image, review the preview, and tap **Scan receipt**. The app retrieves the Firebase ID token from the signed-in session and uploads the image to Go automatically. No debugger, copied token, or curl command is needed.
+
+The approved `expo-image-picker` dependency adds native code, so rebuild and reinstall the development APK once before using this feature:
+
+```bash
+cd mobile
+npx eas-cli@latest build --platform android --profile development
+```
+
+Install the resulting APK on the phone, then start Metro from `mobile/`:
+
+```bash
+npx expo start --dev-client
+```
+
+Run the model launcher and Go in their own terminals as described above. Keep the model on port 8082; Metro uses 8081, and Go uses 8080. Make sure both `RECEIPT_LLM_PORT` and the port in `RECEIPT_LLM_URL` in your local `backend/.env` are 8082. These variables never go in the mobile environment.
+
+For USB development with the existing `EXPO_PUBLIC_API_BASE_URL=http://127.0.0.1:8080`, forward Go and Metro:
+
+```bash
+adb reverse tcp:8080 tcp:8080
+adb reverse tcp:8081 tcp:8081
+```
+
+The phone talks only to Go; no forwarding of the model port is needed. On first capture, allow the camera permission. Photo-library selection uses the system chooser; no microphone permission is requested. If a photo is over 10 MiB or 25 megapixels, use the camera's standard-resolution mode or choose a smaller JPEG/PNG.
+
+The result lists item names, prices, and the printed total. A red message highlights a different item sum. Cancel scan or the back arrow aborts the request; closing the modal discards the in-memory draft. There is no automatic retry. The current UI is an extraction preview: item editing, assigning users, creating an expense, and storing the image in Cloud Storage are not implemented yet. The picker may create local cache files; no manual token files or cloud image records are created.
+
+Check a clear receipt, a mismatching/unreadable receipt, denied camera permission, choosing an existing image, cancellation, and a stopped model server. Verify ordinary expense creation and sign-out still work. Physical-device and live-model verification remains manual.
+
+## Optional command-line request
 
 `POST /api/groups/{groupID}/receipts/extract` requires the normal Firebase ID token and current membership in that group. Send `multipart/form-data` containing exactly one file part named `image`. Do not send image URLs, local server paths, JSON, or other form fields.
 
@@ -104,4 +136,4 @@ Responses use `Cache-Control: no-store`. Model error bodies and private upstream
 - `internal/httpapi/routes.go` and `main.go`: route/dependency registration and environment configuration.
 - `tests/httpapi/receipts_test.go` and `tests/services/receipt_extraction_test.go`: focused authorization, upload, model, arithmetic, cancellation, and failure tests.
 
-Test execution remains deferred at the user's request. No real receipt, Firebase group, or local model has been exercised as part of implementation. Before connecting the mobile flow, verify a real receipt with the local server, confirm item/total accuracy, check a mismatched or unreadable receipt, and measure latency on the hosting hardware.
+Test execution remains deferred at the user's request. No real receipt, Firebase group, physical phone, or local model has been exercised as part of implementation. Verify a real receipt using the mobile flow, confirm item/total accuracy, check a mismatched or unreadable receipt, and measure latency on the hosting hardware.

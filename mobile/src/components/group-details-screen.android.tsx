@@ -10,6 +10,7 @@ import { EditGroupModal } from '@/components/edit-group-modal';
 import { GroupBanner } from '@/components/group-banner';
 import { GroupSettingsModal } from '@/components/group-settings-modal';
 import { SettleUpModal } from '@/components/settle-up-modal';
+import { ReceiptScanModal } from '@/components/receipt-scan-modal';
 import { ThemedText } from '@/components/themed-text';
 import { useAuthSession } from '@/hooks/use-auth-session.android';
 import { useGroupExpenses } from '@/hooks/use-group-expenses';
@@ -63,7 +64,7 @@ function GroupDetails({ user, groupID }: { user: AuthenticatedUser & { uid: stri
   const members = useGroupMembers(user, groupID);
   const expenses = useGroupExpenses(user, groupID);
   const settlement = useGroupSettlement(user, groupID);
-  const [menu, setMenu] = useState<'settings' | 'edit' | 'expense' | 'expense-details' | 'settle' | null>(null);
+  const [menu, setMenu] = useState<'settings' | 'edit' | 'expense' | 'expense-details' | 'settle' | 'receipt' | null>(null);
 
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
 
@@ -170,6 +171,7 @@ function GroupDetails({ user, groupID }: { user: AuthenticatedUser & { uid: stri
               onSettleUp={openSettle}
               onStats={openStats}
               onLists={openLists}
+              onScanReceipt={() => setMenu('receipt')}
               onOpen={showExpenseDetails}
               onRetry={expenses.reload}
               onRetryDebts={settlement.reload}
@@ -200,6 +202,10 @@ function GroupDetails({ user, groupID }: { user: AuthenticatedUser & { uid: stri
       {group && menu === 'expense' && (
         <CreateExpenseModal user={user} group={group} saving={expenses.saving} error={expenses.saveError}
           onSave={expenses.save} onClose={closeExpense} />
+      )}
+
+      {group && menu === 'receipt' && (
+        <ReceiptScanModal user={user} groupID={groupID} onClose={closeMenu} />
       )}
 
       {group && menu === 'settle' && (

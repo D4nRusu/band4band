@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { afterEach, test } from 'node:test';
 
-import { getCurrentUser, completeProfile } from '../src/lib/api.ts';
+import { getCurrentUser, completeProfile, authenticatedRequest } from '../src/lib/api.ts';
 
 const profile = { uid: 'verified-uid', email: 'user@example.test', name: 'Example User', username: '', photoURL: '', createdAt: '2026-11-04T12:00:00Z', profileComplete: false };
 
@@ -28,6 +28,24 @@ test('sends the Firebase user token to the protected Go endpoint', async () => {
     return Response.json(profile);
   };
   assert.deepEqual(await getCurrentUser(user, controller.signal), profile);
+});
+
+test('uploads multipart data with Firebase authentication and leaves its boundary to native fetch', async () => {
+  process.env.EXPO_PUBLIC_API_BASE_URL = 'http://127.0.0.1:8080';
+  const body = new FormData();
+  body.append('image', new Blob(['test image'], { type: 'image/png' }), 'receipt.png');
+  const controller = new AbortController();
+  globalThis.fetch = async (url, options) => {
+    assert.equal(url, 'http://127.0.0.1:8080/api/groups/group-id/receipts/extract');
+    assert.equal(options.headers.Authorization, 'Bearer mock-firebase-token');
+    assert.equal(Object.hasOwn(options.headers, 'Content-Type'), false);
+    assert.equal(options.body, body);
+    assert.equal(options.signal, controller.signal);
+    return Response.json({});
+  };
+
+  await authenticatedRequest({ getIdToken: async () => 'mock-firebase-token' },
+    '/api/groups/group-id/receipts/extract', { method: 'POST', body, signal: controller.signal });
 });
 
 test('rejects missing configuration before requesting a token', async () => {

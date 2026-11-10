@@ -37,7 +37,15 @@
       ],
       "@react-native-google-signin/google-signin",
       "@react-native-firebase/app",
-      "@react-native-firebase/auth"
+      "@react-native-firebase/auth",
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Allow Band4band to photograph your receipts.",
+          "photosPermission": "Allow Band4band to select receipt photos.",
+          "microphonePermission": false
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
