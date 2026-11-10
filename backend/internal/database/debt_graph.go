@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/D4nRusu/band4band/backend/internal/models"
+	"github.com/D4nRusu/band4band/backend/internal/services"
 )
 
 func (s *GroupStore) debtGraphRef(groupID string) *firestore.DocumentRef {
@@ -141,9 +142,22 @@ func (s *GroupStore) writeDebtGraph(tx *firestore.Transaction, groupID string, g
 		graph.Adjacency = map[string][]models.DebtNeighbor{}
 	}
 
-	return tx.Set(s.debtGraphRef(groupID), map[string]any{
+	simplified, err := services.SimplifyDebts(graph)
+	if err != nil {
+		return err
+	}
+
+	if err := tx.Set(s.debtGraphRef(groupID), map[string]any{
 		"currency":  graph.Currency,
 		"adjacency": graph.Adjacency,
+		"updatedAt": firestore.ServerTimestamp,
+	}); err != nil {
+		return err
+	}
+
+	return tx.Set(s.debtGraphRef(groupID).Parent.Doc("simplified"), map[string]any{
+		"currency":  simplified.Currency,
+		"adjacency": simplified.Adjacency,
 		"updatedAt": firestore.ServerTimestamp,
 	})
 }
