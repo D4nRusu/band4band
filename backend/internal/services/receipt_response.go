@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/big"
 	"regexp"
 	"strconv"
 	"strings"
@@ -15,6 +16,15 @@ import (
 var receiptDecimal = regexp.MustCompile(`^-?[0-9]+(?:\.[0-9]{1,2})?$`)
 var receiptCurrency = regexp.MustCompile(`^[A-Z]{3}$`)
 var receiptQuantity = regexp.MustCompile(`^([0-9]+(?:[.,][0-9]+)?)(?:\s*\p{L}+\.?)?$`)
+
+type receiptModelItem struct {
+	Name      string           `json:"name"`
+	Quantity  json.RawMessage  `json:"quantity"`
+	UnitPrice *json.RawMessage `json:"unitPrice"`
+	LineTotal *json.RawMessage `json:"lineTotal"`
+	Amount    *json.RawMessage `json:"amount"` // Older responses used amount for the line total.
+	Discount  *json.RawMessage `json:"discount"`
+}
 
 func decodeReceiptCompletion(body []byte) (models.ReceiptDraft, error) {
 	var completion struct {
@@ -43,14 +53,9 @@ func decodeReceiptCompletion(body []byte) (models.ReceiptDraft, error) {
 
 func decodeReceipt(content string) (models.ReceiptDraft, error) {
 	var output struct {
-		Currency *string          `json:"currency"`
-		Total    *json.RawMessage `json:"total"`
-		Items    []struct {
-			Name     string           `json:"name"`
-			Quantity json.RawMessage  `json:"quantity"`
-			Amount   *json.RawMessage `json:"amount"`
-			Discount json.RawMessage  `json:"discount"` // Line amount already includes any line discount.
-		} `json:"items"`
+		Currency *string            `json:"currency"`
+		Total    *json.RawMessage   `json:"total"`
+		Items    []receiptModelItem `json:"items"`
 	}
 	decoder := json.NewDecoder(strings.NewReader(content))
 	decoder.DisallowUnknownFields()
@@ -95,11 +100,8 @@ func decodeReceipt(content string) (models.ReceiptDraft, error) {
 			return models.ReceiptDraft{}, fmt.Errorf("%w: item %d name is empty or longer than 200 characters", models.ErrReceiptResponse, i+1)
 		}
 
-		if item.Amount == nil {
-			return models.ReceiptDraft{}, fmt.Errorf("%w: item %d amount is missing/null", models.ErrReceiptUnreadable, i+1)
-		}
-
-		amount, err := parseReceiptAmount(*item.Amount)
+		quantity := parseReceiptQuantity(item.Quantity)
+		amount, err := item.lineAmount(quantity)
 		if err != nil {
 			return models.ReceiptDraft{}, fmt.Errorf("item %d amount: %w", i+1, err)
 		}
@@ -109,11 +111,17 @@ func decodeReceipt(content string) (models.ReceiptDraft, error) {
 			return models.ReceiptDraft{}, fmt.Errorf("%w: item sum exceeds the supported range at item %d", models.ErrReceiptResponse, i+1)
 		}
 
+		var displayQuantity *float64
+		if quantity != nil {
+			value, _ := quantity.Float64()
+			displayQuantity = &value
+		}
+
 		draft.ItemsTotalMinor = sum
 		draft.Items = append(draft.Items, models.ReceiptItem{
 			ID:          fmt.Sprintf("item-%d", i+1),
 			Name:        name,
-			Quantity:    parseReceiptQuantity(item.Quantity),
+			Quantity:    displayQuantity,
 			AmountMinor: amount,
 		})
 	}
@@ -122,7 +130,39 @@ func decodeReceipt(content string) (models.ReceiptDraft, error) {
 	return draft, nil
 }
 
-func parseReceiptQuantity(raw json.RawMessage) *float64 {
+func (item receiptModelItem) lineAmount(quantity *big.Rat) (int64, error) {
+	if item.LineTotal != nil {
+		return parseReceiptAmount(*item.LineTotal)
+	}
+
+	if item.UnitPrice == nil {
+		if item.Amount != nil {
+			return parseReceiptAmount(*item.Amount)
+		}
+
+		return 0, fmt.Errorf("%w: missing line total and unit price", models.ErrReceiptUnreadable)
+	}
+
+	if quantity == nil || item.Discount != nil {
+		return 0, fmt.Errorf("%w: need a printed line total or a unit price with quantity and no line discount", models.ErrReceiptUnreadable)
+	}
+
+	unitPrice, err := parseReceiptAmount(*item.UnitPrice)
+	if err != nil {
+		return 0, fmt.Errorf("unit price: %w", err)
+	}
+
+	// Round the exact product to the nearest minor unit, with ties away from zero.
+	product := new(big.Rat).Mul(quantity, big.NewRat(unitPrice, 1))
+	amount, err := strconv.ParseInt(product.FloatString(0), 10, 64)
+	if err != nil || amount < -models.MaxAmountMinor || amount > models.MaxAmountMinor {
+		return 0, fmt.Errorf("%w: calculated line total exceeds the supported range", models.ErrReceiptResponse)
+	}
+
+	return amount, nil
+}
+
+func parseReceiptQuantity(raw json.RawMessage) *big.Rat {
 	value := string(raw)
 	if strings.HasPrefix(value, `"`) {
 		if err := json.Unmarshal(raw, &value); err != nil {
@@ -131,16 +171,16 @@ func parseReceiptQuantity(raw json.RawMessage) *float64 {
 	}
 
 	match := receiptQuantity.FindStringSubmatch(strings.TrimSpace(value))
-	if match == nil {
+	if match == nil || len(match[1]) > 32 {
 		return nil
 	}
 
-	quantity, err := strconv.ParseFloat(strings.ReplaceAll(match[1], ",", "."), 64)
-	if err != nil || quantity <= 0 {
+	quantity, ok := new(big.Rat).SetString(strings.ReplaceAll(match[1], ",", "."))
+	if !ok || quantity.Sign() <= 0 {
 		return nil
 	}
 
-	return &quantity
+	return quantity
 }
 
 func parseReceiptAmount(raw json.RawMessage) (int64, error) {

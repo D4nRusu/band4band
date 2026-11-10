@@ -92,6 +92,9 @@ func TestReceiptResponseValidation(t *testing.T) {
 		{"unsafe sum", `{"currency":"EUR","total":"90071992547409.91","items":[{"name":"Item","amount":"90071992547409.91"},{"name":"Extra","amount":"0.01"}]}`, "stop", models.ErrReceiptResponse},
 		{"missing currency", strings.Replace(readableReceipt, `"EUR"`, "null", 1), "stop", models.ErrReceiptUnreadable},
 		{"unreadable item", strings.Replace(readableReceipt, `"6.50"`, "null", 1), "stop", models.ErrReceiptUnreadable},
+		{"unit price without quantity", strings.Replace(readableReceipt, `"amount":"6.50"`, `"unitPrice":"6.50"`, 1), "stop", models.ErrReceiptUnreadable},
+		{"unit price with line discount but no final amount", strings.Replace(readableReceipt, `"amount":"6.50"`, `"unitPrice":"6.50","quantity":2,"discount":"-0.10"`, 1), "stop", models.ErrReceiptUnreadable},
+		{"calculated line overflow", strings.Replace(readableReceipt, `"amount":"6.50"`, `"unitPrice":"90071992547409.91","quantity":2`, 1), "stop", models.ErrReceiptResponse},
 		{"not a receipt", `{"currency":null,"total":null,"items":[]}`, "stop", models.ErrReceiptUnreadable},
 		{"invalid JSON", "not JSON", "stop", models.ErrReceiptResponse},
 		{"markdown", "```json\n" + readableReceipt + "\n```", "stop", models.ErrReceiptResponse},
@@ -133,14 +136,14 @@ func TestReceiptResponseValidation(t *testing.T) {
 
 func TestReceiptMixedAmountsQuantitiesAndLineDiscount(t *testing.T) {
 	const receipt = `{"currency":"LEI","total":166.78,"items":[
-		{"name":"Cable","quantity":"0,75 kg","amount":"24.10"},
+		{"name":"Cable","quantity":"0,75 kg","unitPrice":"32.13","lineTotal":null},
 		{"name":"Cable ties","quantity":"2 pun","amount":"11.66"},
-		{"name":"Extension cord","quantity":"3 buc","amount":"17.35","discount":-0.75},
+		{"name":"Extension cord","quantity":"3 buc","unitPrice":"6.00","lineTotal":"17.35","discount":-0.75},
 		{"name":"Crimping tool","quantity":1,"amount":59.00},
 		{"name":"Screwdrivers","quantity":"2 set","amount":"34.71"},
 		{"name":"Unreadable quantity","quantity":null,"amount":"0.00"},
 		{"name":"Invalid quantity","quantity":"0 buc","amount":"0.00"},
-		{"name":"Connectors","amount":"19.96"}
+		{"name":"Connectors","quantity":2,"unitPrice":9.98,"lineTotal":null}
 	]}`
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		completionResponse(w, receipt, "stop")
@@ -160,19 +163,20 @@ func TestReceiptMixedAmountsQuantitiesAndLineDiscount(t *testing.T) {
 		t.Fatalf("draft=%+v", draft)
 	}
 
-	if draft.Items[2].AmountMinor != 1735 || draft.Items[3].AmountMinor != 5900 {
-		t.Fatalf("items=%+v", draft.Items)
-	}
-
-	for i, want := range []float64{0.75, 2, 3, 1, 2} {
-		if got := draft.Items[i].Quantity; got == nil || *got != want {
-			t.Errorf("item %d quantity = %v, want %g", i+1, got, want)
+	for i, want := range []int64{2410, 1166, 1735, 5900, 3471, 0, 0, 1996} {
+		if got := draft.Items[i].AmountMinor; got != want {
+			t.Errorf("item %d amount = %d, want %d", i+1, got, want)
 		}
 	}
 
-	for _, item := range draft.Items[5:] {
-		if item.Quantity != nil {
-			t.Errorf("%s should have no quantity", item.Name)
+	for i, want := range []float64{0.75, 2, 3, 1, 2, 0, 0, 2} {
+		got := draft.Items[i].Quantity
+		if want == 0 {
+			if got != nil {
+				t.Errorf("item %d should have no quantity", i+1)
+			}
+		} else if got == nil || *got != want {
+			t.Errorf("item %d quantity = %v, want %g", i+1, got, want)
 		}
 	}
 }
