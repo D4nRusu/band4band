@@ -1,0 +1,13 @@
+import { router } from 'expo-router';
+import { Button, View } from 'react-native';
+
+import { ThemedText } from '@/components/themed-text';
+
+export default function GroupStatsScreen() {
+  return (
+    <View style={{ padding: 24, gap: 16 }}>
+      <ThemedText>Group statistics are currently available in the Android development build.</ThemedText>
+      <Button title="Back to groups" onPress={() => router.replace('/groups')} />
+    </View>
+  );
+}

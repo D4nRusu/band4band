@@ -55,6 +55,8 @@ type GroupExpenseListProps = {
   settleDisabled: boolean;
   onAdd: () => void;
   onSettleUp: () => void;
+  onStats: () => void;
+  onLists: () => void;
   onOpen: (expense: Expense) => void;
   onRetry: () => void;
   onRetryDebts: () => void;
@@ -75,6 +77,8 @@ export function GroupExpenseList({
   settleDisabled,
   onAdd,
   onSettleUp,
+  onStats,
+  onLists,
   onOpen,
   onRetry,
   onRetryDebts,
@@ -140,6 +144,16 @@ export function GroupExpenseList({
           style={({ pressed }) => [styles.action, { backgroundColor: theme.backgroundElement },
             pressed && styles.pressed, settleDisabled && styles.disabled]}>
           <ThemedText type="smallBold">Settle up</ThemedText>
+        </Pressable>
+
+        <Pressable onPress={onStats} accessibilityRole="button" accessibilityLabel="Group stats"
+          style={({ pressed }) => [styles.action, { backgroundColor: theme.backgroundElement }, pressed && styles.pressed]}>
+          <ThemedText type="smallBold">Stats</ThemedText>
+        </Pressable>
+
+        <Pressable onPress={onLists} accessibilityRole="button" accessibilityLabel="Group lists"
+          style={({ pressed }) => [styles.action, { backgroundColor: theme.backgroundElement }, pressed && styles.pressed]}>
+          <ThemedText type="smallBold">Lists</ThemedText>
         </Pressable>
       </View>
 
