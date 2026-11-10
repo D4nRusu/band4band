@@ -59,7 +59,7 @@ func TestCategoryEndpoints(t *testing.T) {
 			}
 
 			w := httptest.NewRecorder()
-			httpapi.NewRouter(verifier, nil, store, nil).ServeHTTP(w, r)
+			httpapi.NewRouter(verifier, nil, store, nil, nil).ServeHTTP(w, r)
 			if w.Code != tc.status {
 				t.Fatalf("status=%d body=%s", w.Code, w.Body.String())
 			}
@@ -102,7 +102,7 @@ func TestDeleteCategoryEndpoint(t *testing.T) {
 			}
 
 			w := httptest.NewRecorder()
-			httpapi.NewRouter(verifier, nil, store, nil).ServeHTTP(w, r)
+			httpapi.NewRouter(verifier, nil, store, nil, nil).ServeHTTP(w, r)
 			if w.Code != tc.status || called != tc.authenticated {
 				t.Fatalf("status=%d called=%v", w.Code, called)
 			}

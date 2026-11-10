@@ -60,7 +60,7 @@ func TestCreateExpense(t *testing.T) {
 			}
 
 			w := httptest.NewRecorder()
-			httpapi.NewRouter(verifier, nil, store, nil).ServeHTTP(w, r)
+			httpapi.NewRouter(verifier, nil, store, nil, nil).ServeHTTP(w, r)
 			if w.Code != tc.status {
 				t.Fatalf("status=%d body=%s", w.Code, w.Body.String())
 			}
@@ -102,7 +102,7 @@ func TestExpenseListAuthorization(t *testing.T) {
 			}
 
 			w := httptest.NewRecorder()
-			httpapi.NewRouter(verifier, nil, store, nil).ServeHTTP(w, r)
+			httpapi.NewRouter(verifier, nil, store, nil, nil).ServeHTTP(w, r)
 			if w.Code != tc.status {
 				t.Fatalf("status=%d", w.Code)
 			}
@@ -144,7 +144,7 @@ func TestDeleteExpenseEndpoint(t *testing.T) {
 			}
 
 			w := httptest.NewRecorder()
-			httpapi.NewRouter(verifier, nil, store, nil).ServeHTTP(w, r)
+			httpapi.NewRouter(verifier, nil, store, nil, nil).ServeHTTP(w, r)
 			if w.Code != tc.status || called != tc.authenticated {
 				t.Fatalf("status=%d called=%v", w.Code, called)
 			}
@@ -181,7 +181,7 @@ func TestExpenseListPositionUsesVerifiedViewer(t *testing.T) {
 			r := httptest.NewRequest("GET", "/api/groups/group-id/expenses?uid=payer", nil)
 			r.Header.Set("Authorization", "Bearer token")
 			w := httptest.NewRecorder()
-			httpapi.NewRouter(verifier, nil, store, nil).ServeHTTP(w, r)
+			httpapi.NewRouter(verifier, nil, store, nil, nil).ServeHTTP(w, r)
 			if w.Code != 200 {
 				t.Fatalf("status=%d", w.Code)
 			}

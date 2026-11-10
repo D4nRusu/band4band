@@ -6,11 +6,12 @@ import (
 )
 
 // NewRouter registers public health and authenticated profile/group endpoints.
-func NewRouter(verifier TokenVerifier, users UserStore, groups GroupStore, invitations InvitationStore) http.Handler {
+func NewRouter(verifier TokenVerifier, users UserStore, groups GroupStore, invitations InvitationStore, receipts ReceiptExtractor) http.Handler {
 	mux := http.NewServeMux()
 	handler := userHandler{users: users}
 	groupsHandler := groupHandler{groups: groups}
 	invitesHandler := invitationHandler{invitations: invitations}
+	receiptsHandler := receiptHandler{groups: groups, extractor: receipts}
 
 	mux.HandleFunc("GET /api/health", health)
 	mux.Handle("GET /api/users/me", Authenticate(verifier, http.HandlerFunc(handler.currentUser)))
@@ -39,6 +40,7 @@ func NewRouter(verifier TokenVerifier, users UserStore, groups GroupStore, invit
 	mux.Handle("POST /api/groups/{groupID}/settlements", Authenticate(verifier, http.HandlerFunc(groupsHandler.settleUp)))
 	mux.Handle("GET /api/groups/{groupID}/users/{userID}/owed", Authenticate(verifier, http.HandlerFunc(groupsHandler.userOwedSummary)))
 	mux.Handle("GET /api/groups/{groupID}/users/{userID}/receivable", Authenticate(verifier, http.HandlerFunc(groupsHandler.userReceivableSummary)))
+	mux.Handle("POST /api/groups/{groupID}/receipts/extract", Authenticate(verifier, http.HandlerFunc(receiptsHandler.extract)))
 	mux.Handle("GET /api/groups/{groupID}/members", Authenticate(verifier, http.HandlerFunc(groupsHandler.members)))
 	mux.Handle("PUT /api/groups/{groupID}", Authenticate(verifier, http.HandlerFunc(groupsHandler.updateGroup)))
 	mux.Handle("DELETE /api/groups/{groupID}", Authenticate(verifier, http.HandlerFunc(groupsHandler.deleteGroup)))

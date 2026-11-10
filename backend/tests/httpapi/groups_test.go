@@ -68,7 +68,7 @@ func TestGroupsRequireAuthentication(t *testing.T) {
 			})
 
 			w := httptest.NewRecorder()
-			httpapi.NewRouter(verifier, nil, groupStoreStub{}, nil).ServeHTTP(w, httptest.NewRequest(method, "/api/groups", nil))
+			httpapi.NewRouter(verifier, nil, groupStoreStub{}, nil, nil).ServeHTTP(w, httptest.NewRequest(method, "/api/groups", nil))
 
 			if w.Code != 401 {
 				t.Fatalf("status = %d", w.Code)
@@ -93,7 +93,7 @@ func TestGroupListUsesAuthenticatedMembership(t *testing.T) {
 	r := httptest.NewRequest("GET", "/api/groups?uid=another-user", nil)
 	r.Header.Set("Authorization", "Bearer token")
 	w := httptest.NewRecorder()
-	httpapi.NewRouter(verifier, nil, store, nil).ServeHTTP(w, r)
+	httpapi.NewRouter(verifier, nil, store, nil, nil).ServeHTTP(w, r)
 
 	if w.Code != 200 || strings.TrimSpace(w.Body.String()) != "[]" {
 		t.Fatalf("status=%d body=%s", w.Code, w.Body.String())
@@ -133,7 +133,7 @@ func TestGroupCreationValidatesClientInput(t *testing.T) {
 			r := httptest.NewRequest("POST", "/api/groups", strings.NewReader(tc.body))
 			r.Header.Set("Authorization", "Bearer token")
 			w := httptest.NewRecorder()
-			httpapi.NewRouter(verifier, nil, store, nil).ServeHTTP(w, r)
+			httpapi.NewRouter(verifier, nil, store, nil, nil).ServeHTTP(w, r)
 
 			if w.Code != tc.status {
 				t.Fatalf("status=%d body=%s", w.Code, w.Body.String())
@@ -194,7 +194,7 @@ func TestDeleteGroupEndpoint(t *testing.T) {
 			}
 
 			w := httptest.NewRecorder()
-			httpapi.NewRouter(verifier, nil, store, nil).ServeHTTP(w, r)
+			httpapi.NewRouter(verifier, nil, store, nil, nil).ServeHTTP(w, r)
 
 			if w.Code != tc.status {
 				t.Fatalf("status=%d body=%s", w.Code, w.Body.String())

@@ -42,7 +42,7 @@ func TestUnequalExpenseRequest(t *testing.T) {
 			r := httptest.NewRequest("POST", "/api/groups/group-id/expenses", strings.NewReader(tc.body))
 			r.Header.Set("Authorization", "Bearer token")
 			w := httptest.NewRecorder()
-			httpapi.NewRouter(verifier, nil, store, nil).ServeHTTP(w, r)
+			httpapi.NewRouter(verifier, nil, store, nil, nil).ServeHTTP(w, r)
 			if w.Code != tc.status || called != (tc.status == 201) {
 				t.Fatalf("status=%d called=%v body=%s", w.Code, called, w.Body.String())
 			}
