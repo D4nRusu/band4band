@@ -1,11 +1,32 @@
+import { useMemo, useState } from 'react';
 import { ActivityIndicator, Button, Pressable, StyleSheet, View } from 'react-native';
 
 import { ExpenseCard } from '@/components/expense-card';
 import { ErrorMessage } from '@/components/error-message';
+import { SettlementCard } from '@/components/settlement-card';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import type { Expense } from '@/lib/expenses-api';
 import { formatExpenseAmount } from '@/lib/money';
+import type { Settlement } from '@/lib/settlements-api';
+
+type HistoryFilter = 'all' | 'expenses' | 'settlements';
+
+type HistoryEntry =
+  | { kind: 'expense'; createdAt: string; expense: Expense }
+  | { kind: 'settlement'; createdAt: string; settlement: Settlement };
+
+const historyFilters: { value: HistoryFilter; label: string }[] = [
+  { value: 'all', label: 'All' },
+  { value: 'expenses', label: 'Expenses' },
+  { value: 'settlements', label: 'Settlements' },
+];
+
+const emptyHistoryText: Record<HistoryFilter, string> = {
+  all: 'No expenses or settlements yet. Add the first expense above.',
+  expenses: 'No expenses yet. Add the first one above.',
+  settlements: 'No settlements yet.',
+};
 
 type DebtRow = {
   toUID: string;
@@ -20,7 +41,9 @@ type ReceivableRow = {
 };
 
 type GroupExpenseListProps = {
+  currentUID: string;
   expenses: Expense[];
+  settlements: Settlement[];
   debts: DebtRow[];
   receivables: ReceivableRow[];
   debtCurrency: string;
@@ -38,7 +61,9 @@ type GroupExpenseListProps = {
 };
 
 export function GroupExpenseList({
+  currentUID,
   expenses,
+  settlements,
   debts,
   receivables,
   debtCurrency,
@@ -56,6 +81,8 @@ export function GroupExpenseList({
 }: GroupExpenseListProps) {
   const theme = useTheme();
   const addDisabled = loading || saving || error !== null;
+  const [filter, setFilter] = useState<HistoryFilter>('all');
+  const history = useMemo(() => buildHistory(expenses, settlements, filter), [expenses, settlements, filter]);
 
   return (
     <View style={styles.section}>
@@ -116,6 +143,8 @@ export function GroupExpenseList({
         </Pressable>
       </View>
 
+      <HistoryFilterPicker value={filter} onChange={setFilter} />
+
       {loading && <ActivityIndicator accessibilityLabel="Loading expenses" />}
       {error && (
         <View style={styles.feedback}>
@@ -123,13 +152,57 @@ export function GroupExpenseList({
           <Button title="Retry expenses" onPress={onRetry} disabled={loading || saving} />
         </View>
       )}
-      {!loading && !error && expenses.length === 0 && <ThemedText>No expenses yet. Add the first one above.</ThemedText>}
+      {!loading && !error && history.length === 0 && <ThemedText>{emptyHistoryText[filter]}</ThemedText>}
 
-      {expenses.map((expense) => (
-        <ExpenseCard key={expense.id} expense={expense} onOpen={onOpen} disabled={saving} />
+      {history.map((entry) => (entry.kind === 'expense'
+        ? <ExpenseCard key={`expense-${entry.expense.id}`} expense={entry.expense} onOpen={onOpen} disabled={saving} />
+        : <SettlementCard key={`settlement-${entry.settlement.id}`} settlement={entry.settlement} currentUID={currentUID} />
       ))}
     </View>
   );
+}
+
+function HistoryFilterPicker({ value, onChange }: { value: HistoryFilter; onChange: (value: HistoryFilter) => void }) {
+  const theme = useTheme();
+
+  return (
+    <View style={styles.filters} accessibilityRole="radiogroup" accessibilityLabel="Show in history">
+      {historyFilters.map((option) => {
+        const selected = option.value === value;
+
+        return (
+          <Pressable
+            key={option.value}
+            onPress={() => onChange(option.value)}
+            accessibilityRole="radio"
+            accessibilityState={{ selected }}
+            style={({ pressed }) => [
+              styles.filter,
+              { borderColor: selected ? theme.text : theme.textSecondary },
+              selected && { backgroundColor: theme.backgroundElement },
+              pressed && styles.pressed,
+            ]}
+          >
+            <ThemedText type={selected ? 'smallBold' : 'small'}>{option.label}</ThemedText>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+function buildHistory(expenses: Expense[], settlements: Settlement[], filter: HistoryFilter): HistoryEntry[] {
+  const entries: HistoryEntry[] = [];
+
+  if (filter !== 'settlements') {
+    expenses.forEach((expense) => entries.push({ kind: 'expense', createdAt: expense.createdAt, expense }));
+  }
+
+  if (filter !== 'expenses') {
+    settlements.forEach((settlement) => entries.push({ kind: 'settlement', createdAt: settlement.createdAt, settlement }));
+  }
+
+  return entries.sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt));
 }
 
 const styles = StyleSheet.create({
@@ -143,4 +216,6 @@ const styles = StyleSheet.create({
   pressed: { opacity: 0.7 },
   disabled: { opacity: 0.5 },
   feedback: { gap: 8 },
+  filters: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  filter: { minHeight: 40, paddingHorizontal: 14, justifyContent: 'center', borderWidth: 1, borderRadius: 20 },
 });

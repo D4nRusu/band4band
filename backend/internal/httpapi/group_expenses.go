@@ -142,6 +142,26 @@ func (h groupHandler) settleUp(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func (h groupHandler) settlements(w http.ResponseWriter, r *http.Request) {
+	uid, ok := UIDFromContext(r.Context())
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	settlements, err := h.groups.Settlements(r.Context(), uid, r.PathValue("groupID"))
+	if err != nil {
+		writeExpenseError(w, err)
+		return
+	}
+
+	if settlements == nil {
+		settlements = []models.Settlement{}
+	}
+
+	writeGroupJSON(w, http.StatusOK, settlements)
+}
+
 func (h groupHandler) userOwedSummary(w http.ResponseWriter, r *http.Request) {
 	uid, ok := UIDFromContext(r.Context())
 	if !ok {

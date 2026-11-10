@@ -58,6 +58,56 @@ func TestSettleUpEndpoint(t *testing.T) {
 	}
 }
 
+func TestSettlementsEndpoint(t *testing.T) {
+	for _, tc := range []struct {
+		name          string
+		authenticated bool
+		err           error
+		status        int
+	}{
+		{"member", true, nil, 200},
+		{"non-member", true, models.ErrGroupAccessForbidden, 403},
+		{"missing group", true, models.ErrGroupNotFound, 404},
+		{"unauthenticated", false, nil, 401},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			store := groupStoreStub{settlements: func(_ context.Context, uid, groupID string) ([]models.Settlement, error) {
+				if uid != "member" || groupID != "group-id" {
+					t.Fatalf("uid=%s group=%s", uid, groupID)
+				}
+
+				if tc.err != nil {
+					return nil, tc.err
+				}
+
+				return []models.Settlement{{ID: "s1", FromUID: "alice", FromName: "Alice", ToUID: "bob", ToName: "Bob", AmountMinor: 500, Currency: "EUR"}}, nil
+			}}
+			verifier := verifierFunc(func(context.Context, string) (*auth.Token, error) { return &auth.Token{UID: "member"}, nil })
+			r := httptest.NewRequest("GET", "/api/groups/group-id/settlements", nil)
+			if tc.authenticated {
+				r.Header.Set("Authorization", "Bearer token")
+			}
+
+			w := httptest.NewRecorder()
+			httpapi.NewRouter(verifier, nil, store, nil).ServeHTTP(w, r)
+			if w.Code != tc.status {
+				t.Fatalf("status=%d body=%s", w.Code, w.Body.String())
+			}
+
+			if tc.status == 200 {
+				var settlements []models.Settlement
+				if err := json.Unmarshal(w.Body.Bytes(), &settlements); err != nil {
+					t.Fatal(err)
+				}
+
+				if len(settlements) != 1 || settlements[0].FromUID != "alice" || settlements[0].ToName != "Bob" || settlements[0].AmountMinor != 500 {
+					t.Fatalf("settlements=%+v", settlements)
+				}
+			}
+		})
+	}
+}
+
 func TestUserOwedSummaryEndpoint(t *testing.T) {
 	for _, tc := range []struct {
 		name          string

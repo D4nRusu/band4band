@@ -144,7 +144,9 @@ function GroupDetails({ user, groupID }: { user: AuthenticatedUser & { uid: stri
             <GroupBanner group={group} onBack={backToGroups}
               onPeoplePress={() => setMenu('members')} onSettingsPress={() => setMenu('settings')} />
             <GroupExpenseList
+              currentUID={user.uid}
               expenses={expenses.expenses}
+              settlements={settlement.settlements}
                 debts={owedDebts}
                 receivables={receivableDebts}
                 debtCurrency={settlement.owedSummary?.currency ?? settlement.receivableSummary?.currency ?? group.currency}

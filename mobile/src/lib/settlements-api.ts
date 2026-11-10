@@ -9,6 +9,19 @@ export type SettleUpInput = {
   amountMinor: number;
 };
 
+export type Settlement = {
+  id: string;
+  groupID: string;
+  fromUID: string;
+  fromName: string;
+  toUID: string;
+  toName: string;
+  amountMinor: number;
+  currency: string;
+  createdBy: string;
+  createdAt: string;
+};
+
 export type UserOwedDebt = {
   toUID: string;
   amountMinor: number;
@@ -48,6 +61,20 @@ export async function getUserOwedSummary(
 
   const body: unknown = await response.json();
   if (!isUserOwedSummary(body)) throw new Error('The backend returned an invalid debt summary.');
+
+  return body;
+}
+
+export async function getSettlements(
+  user: AuthenticatedUser,
+  groupID: string,
+  signal?: AbortSignal,
+): Promise<Settlement[]> {
+  const response = await authenticatedRequest(user, `/api/groups/${encodeURIComponent(groupID)}/settlements`, { signal });
+  await checkSettlementResponse(response);
+
+  const body: unknown = await response.json();
+  if (!Array.isArray(body) || !body.every(isSettlement)) throw new Error('The backend returned an invalid settlement history.');
 
   return body;
 }
@@ -156,4 +183,15 @@ function isUserReceivableDebt(value: unknown): value is UserReceivableDebt {
   const debt = value as Record<string, unknown>;
   return typeof debt.fromUID === 'string' && debt.fromUID.length > 0
     && isSafeMinor(debt.amountMinor) && debt.amountMinor > 0;
+}
+
+function isSettlement(value: unknown): value is Settlement {
+  if (!value || typeof value !== 'object') return false;
+
+  const settlement = value as Record<string, unknown>;
+  const textFields = ['id', 'groupID', 'fromUID', 'fromName', 'toUID', 'toName', 'currency', 'createdBy', 'createdAt'];
+  if (!textFields.every((field) => typeof settlement[field] === 'string')) return false;
+  if (!isSafeMinor(settlement.amountMinor) || settlement.amountMinor <= 0) return false;
+
+  return !Number.isNaN(Date.parse(settlement.createdAt as string));
 }

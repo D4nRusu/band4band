@@ -4,10 +4,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { AuthenticatedUser } from '@/lib/api';
 import { GroupUnavailableError } from '@/lib/groups-api';
 import {
+  getSettlements,
   getUserReceivableSummary,
   getUserOwedSummary,
   SettlementRejectedError,
   settleUp,
+  type Settlement,
   type SettleUpInput,
   type UserReceivableSummary,
   type UserOwedSummary,
@@ -16,6 +18,7 @@ import {
 export function useGroupSettlement(user: AuthenticatedUser & { uid: string }, groupID: string) {
   const [owedSummary, setOwedSummary] = useState<UserOwedSummary | null>(null);
   const [receivableSummary, setReceivableSummary] = useState<UserReceivableSummary | null>(null);
+  const [settlements, setSettlements] = useState<Settlement[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [settling, setSettling] = useState(false);
@@ -45,12 +48,14 @@ export function useGroupSettlement(user: AuthenticatedUser & { uid: string }, gr
     Promise.all([
       getUserOwedSummary(user, groupID, user.uid, controller.signal),
       getUserReceivableSummary(user, groupID, user.uid, controller.signal),
+      getSettlements(user, groupID, controller.signal),
     ])
-      .then(([loadedOwed, loadedReceivable]) => {
+      .then(([loadedOwed, loadedReceivable, loadedSettlements]) => {
         if (controller.signal.aborted) return;
 
         setOwedSummary(loadedOwed);
         setReceivableSummary(loadedReceivable);
+        setSettlements(loadedSettlements);
       })
       .catch((cause: unknown) => {
         if (controller.signal.aborted) return;
@@ -91,13 +96,15 @@ export function useGroupSettlement(user: AuthenticatedUser & { uid: string }, gr
       await settleUp(user, groupID, input, controller.signal);
       if (controller.signal.aborted) return false;
 
-      const [refreshedOwed, refreshedReceivable] = await Promise.all([
+      const [refreshedOwed, refreshedReceivable, refreshedSettlements] = await Promise.all([
         getUserOwedSummary(user, groupID, user.uid, controller.signal),
         getUserReceivableSummary(user, groupID, user.uid, controller.signal),
+        getSettlements(user, groupID, controller.signal),
       ]);
       if (!controller.signal.aborted) {
         setOwedSummary(refreshedOwed);
         setReceivableSummary(refreshedReceivable);
+        setSettlements(refreshedSettlements);
       }
 
       return !controller.signal.aborted;
@@ -135,6 +142,7 @@ export function useGroupSettlement(user: AuthenticatedUser & { uid: string }, gr
   return {
     owedSummary,
     receivableSummary,
+    settlements,
     loading,
     error,
     settling,

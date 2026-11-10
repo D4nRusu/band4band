@@ -30,6 +30,43 @@ func TestSettleUpUpdatesDebtGraphs(t *testing.T) {
 	checkDebt(t, simplified, "bob", "charlie", 0)
 }
 
+func TestSettlementsListsRecordedPayments(t *testing.T) {
+	_, db, ctx := emulatorStore(t)
+	groups := database.NewGroupStore(db)
+	group := graphGroup(t, groups, db, ctx)
+	graphExpense(t, groups, ctx, group.ID, "bob", 1000, "alice")
+
+	if err := groups.SettleUp(ctx, "alice", group.ID, "alice", "bob", 300); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := groups.SettleUp(ctx, "bob", group.ID, "charlie", "bob", 200); err == nil {
+		t.Fatal("recipient recorded a payment from a third member")
+	}
+
+	if err := groups.SettleUp(ctx, "bob", group.ID, "alice", "bob", 100); err != nil {
+		t.Fatal(err)
+	}
+
+	settlements, err := groups.Settlements(ctx, "charlie", group.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(settlements) != 2 || settlements[0].AmountMinor != 100 || settlements[1].AmountMinor != 300 {
+		t.Fatalf("settlements=%+v", settlements)
+	}
+
+	first := settlements[1]
+	if first.FromUID != "alice" || first.ToUID != "bob" || first.CreatedBy != "alice" || first.Currency != "EUR" || first.CreatedAt.IsZero() {
+		t.Fatalf("settlement=%+v", first)
+	}
+
+	if _, err := groups.Settlements(ctx, "outsider", group.ID); !errors.Is(err, models.ErrGroupAccessForbidden) {
+		t.Fatalf("err=%v", err)
+	}
+}
+
 func TestSettleUpRejectsInvalidPayments(t *testing.T) {
 	_, db, ctx := emulatorStore(t)
 	groups := database.NewGroupStore(db)

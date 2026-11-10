@@ -16,6 +16,7 @@ import (
 
 type groupStoreStub struct {
 	settleUp       func(context.Context, string, string, string, string, int64) error
+	settlements    func(context.Context, string, string) ([]models.Settlement, error)
 	userOwed       func(context.Context, string, string, string) (models.UserOwedSummary, error)
 	userReceivable func(context.Context, string, string, string) (models.UserReceivableSummary, error)
 	deleteExpense  func(context.Context, string, string, string) error
@@ -241,6 +242,10 @@ func (s groupStoreStub) DeleteExpense(ctx context.Context, uid, groupID, expense
 
 func (s groupStoreStub) SettleUp(ctx context.Context, uid, groupID, fromUID, toUID string, amountMinor int64) error {
 	return s.settleUp(ctx, uid, groupID, fromUID, toUID, amountMinor)
+}
+
+func (s groupStoreStub) Settlements(ctx context.Context, uid, groupID string) ([]models.Settlement, error) {
+	return s.settlements(ctx, uid, groupID)
 }
 
 func (s groupStoreStub) UserOwedSummary(ctx context.Context, uid, groupID, userUID string) (models.UserOwedSummary, error) {

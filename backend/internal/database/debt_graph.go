@@ -134,6 +134,22 @@ func (s *GroupStore) initializeDebtGraph(tx *firestore.Transaction, groupID, cur
 		}
 	}
 
+	settlementSnapshots, err := tx.Documents(s.db.Collection("groups").Doc(groupID).Collection("settlements").Query).GetAll()
+	if err != nil {
+		return models.DebtGraph{}, err
+	}
+
+	for _, snapshot := range settlementSnapshots {
+		var settlement models.Settlement
+		if err := snapshot.DataTo(&settlement); err != nil {
+			return models.DebtGraph{}, err
+		}
+
+		if err := graph.ApplyExpense(settlement.AsExpense(), false); err != nil {
+			return models.DebtGraph{}, err
+		}
+	}
+
 	return graph, nil
 }
 

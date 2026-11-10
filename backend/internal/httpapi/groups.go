@@ -11,6 +11,7 @@ import (
 
 type GroupStore interface {
 	SettleUp(context.Context, string, string, string, string, int64) error
+	Settlements(context.Context, string, string) ([]models.Settlement, error)
 	UserOwedSummary(context.Context, string, string, string) (models.UserOwedSummary, error)
 	UserReceivableSummary(context.Context, string, string, string) (models.UserReceivableSummary, error)
 	DeleteExpense(context.Context, string, string, string) error
