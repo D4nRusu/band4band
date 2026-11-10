@@ -4,25 +4,27 @@ This milestone extracts an editable draft from a receipt photo. It does not crea
 
 ## Start the model server
 
-Install/use a llama.cpp build with `llama-server` and support for your vision model. Use the same Ministral GGUF and matching projector that worked with `chat.sh`. Set `MODEL_PATH` and `MMPROJ_PATH` in your terminal to those actual local file paths, then run:
+Install/use a llama.cpp build with `llama-server` on PATH and support for your vision model. Use the same Ministral GGUF and matching projector that worked with `chat.sh`.
+
+Configure their paths once in the existing `backend/.env` using `RECEIPT_LLM_MODEL_PATH` and `RECEIPT_LLM_MMPROJ_PATH`. The entries are deliberately blank until you supply your actual paths. See `backend/.env.example` for all supported settings; merge them into your existing file rather than overwriting Firebase configuration. Quote paths containing spaces. The launcher reads this file as Bash assignments (`KEY=value`). Absolute paths are recommended; relative paths resolve from `backend/`, and quoted `~` is not expanded.
+
+Then, from the repository root, start the model with:
 
 ```bash
-llama-server \
-  -m "$MODEL_PATH" \
-  --mmproj "$MMPROJ_PATH" \
-  -ngl 99 -c 40960 -fa on --jinja \
-  --chat-template-kwargs '{"enable_thinking":false}' \
-  --alias receipts \
-  --host 127.0.0.1 --port 8081
+./scripts/start-llm.sh
 ```
 
-The GPU/context settings above match the existing script; adjust them for the server's available memory if necessary. Keep this process running. Go connects to the model over HTTP rather than loading a model per upload. Use a llama.cpp version that supports multimodal chat completions and JSON-schema response formatting. These capabilities vary by installed build/model and still require a live check with your files. See [multimodal support](https://github.com/ggml-org/llama.cpp/blob/master/docs/multimodal.md) and [server documentation](https://github.com/ggml-org/llama.cpp/tree/master/tools/server).
+No exports or model-path arguments are needed in subsequent terminals. The launcher finds `backend/.env` relative to its own location, so invoking it by its absolute path works from any directory. It runs in the foreground; keep the terminal open and use Ctrl+C to stop it.
+
+The defaults are GPU layers 99, context 40960, thinking off, model alias `receipts`, and loopback port 8081. Optional `RECEIPT_LLM_GPU_LAYERS`, `RECEIPT_LLM_CONTEXT`, and `RECEIPT_LLM_PORT` settings override these values; `RECEIPT_LLM_MODEL` controls the alias used by both Go and the launcher. If you change the port, update `RECEIPT_LLM_URL` to match. The launcher validates the required paths and executable before starting. It does not download models or start Go/Expo.
+
+The GPU/context defaults match the existing script; adjust them for the server's available memory if necessary. Go connects to the model over HTTP rather than loading a model per upload. Use a llama.cpp version that supports multimodal chat completions and JSON-schema response formatting. These capabilities vary by installed build/model and still require a live check with your files. See [multimodal support](https://github.com/ggml-org/llama.cpp/blob/master/docs/multimodal.md) and [server documentation](https://github.com/ggml-org/llama.cpp/tree/master/tools/server).
 
 The model server should remain private to the backend. If Go and llama-server run in separate containers, configure their private network address instead of loopback; do not expose inference directly to the mobile app.
 
 ## Configure Go
 
-Add these settings to the existing local `backend/.env`, or export them in the backend terminal:
+Keep these settings in the same local `backend/.env`; Go loads them automatically when started from `backend/`:
 
 ```dotenv
 RECEIPT_LLM_URL=http://127.0.0.1:8081/v1/chat/completions
