@@ -22,6 +22,11 @@ export type Settlement = {
   createdAt: string;
 };
 
+export type MemberBalance = {
+  uid: string;
+  netAmountMinor: number;
+};
+
 export type UserOwedDebt = {
   toUID: string;
   amountMinor: number;
@@ -75,6 +80,20 @@ export async function getSettlements(
 
   const body: unknown = await response.json();
   if (!Array.isArray(body) || !body.every(isSettlement)) throw new Error('The backend returned an invalid settlement history.');
+
+  return body;
+}
+
+export async function getMemberBalances(
+  user: AuthenticatedUser,
+  groupID: string,
+  signal?: AbortSignal,
+): Promise<MemberBalance[]> {
+  const response = await authenticatedRequest(user, `/api/groups/${encodeURIComponent(groupID)}/balances`, { signal });
+  await checkSettlementResponse(response);
+
+  const body: unknown = await response.json();
+  if (!Array.isArray(body) || !body.every(isMemberBalance)) throw new Error('The backend returned invalid balances.');
 
   return body;
 }
@@ -194,4 +213,11 @@ function isSettlement(value: unknown): value is Settlement {
   if (!isSafeMinor(settlement.amountMinor) || settlement.amountMinor <= 0) return false;
 
   return !Number.isNaN(Date.parse(settlement.createdAt as string));
+}
+
+function isMemberBalance(value: unknown): value is MemberBalance {
+  if (!value || typeof value !== 'object') return false;
+
+  const balance = value as Record<string, unknown>;
+  return typeof balance.uid === 'string' && balance.uid.length > 0 && isSafeMinor(balance.netAmountMinor);
 }

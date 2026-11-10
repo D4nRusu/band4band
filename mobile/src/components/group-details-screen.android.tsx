@@ -8,9 +8,7 @@ import { CreateExpenseModal } from '@/components/create-expense-modal';
 import { GroupExpenseList } from '@/components/group-expense-list';
 import { EditGroupModal } from '@/components/edit-group-modal';
 import { GroupBanner } from '@/components/group-banner';
-import { GroupMembersModal } from '@/components/group-members-modal';
 import { GroupSettingsModal } from '@/components/group-settings-modal';
-import { InviteUserModal } from '@/components/invite-user-modal';
 import { SettleUpModal } from '@/components/settle-up-modal';
 import { ThemedText } from '@/components/themed-text';
 import { useAuthSession } from '@/hooks/use-auth-session.android';
@@ -65,7 +63,7 @@ function GroupDetails({ user, groupID }: { user: AuthenticatedUser & { uid: stri
   const members = useGroupMembers(user, groupID);
   const expenses = useGroupExpenses(user, groupID);
   const settlement = useGroupSettlement(user, groupID);
-  const [menu, setMenu] = useState<'members' | 'invite' | 'settings' | 'edit' | 'expense' | 'expense-details' | 'settle' | null>(null);
+  const [menu, setMenu] = useState<'settings' | 'edit' | 'expense' | 'expense-details' | 'settle' | null>(null);
 
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
 
@@ -106,6 +104,10 @@ function GroupDetails({ user, groupID }: { user: AuthenticatedUser & { uid: stri
     expenses.reload();
   }
 
+  function openPeople() {
+    router.push({ pathname: '/groups/[groupID]/people', params: { groupID } });
+  }
+
   function openCategories() {
     closeMenu();
     router.push({ pathname: '/groups/[groupID]/categories', params: { groupID } });
@@ -142,7 +144,7 @@ function GroupDetails({ user, groupID }: { user: AuthenticatedUser & { uid: stri
         {group && (
           <>
             <GroupBanner group={group} onBack={backToGroups}
-              onPeoplePress={() => setMenu('members')} onSettingsPress={() => setMenu('settings')} />
+              onPeoplePress={openPeople} onSettingsPress={() => setMenu('settings')} />
             <GroupExpenseList
               currentUID={user.uid}
               expenses={expenses.expenses}
@@ -205,14 +207,6 @@ function GroupDetails({ user, groupID }: { user: AuthenticatedUser & { uid: stri
           onSettle={submitSettlement}
           onClose={closeMenu}
         />
-      )}
-
-      {group && menu === 'members' && (
-        <GroupMembersModal user={user} group={group} onClose={closeMenu} onInvite={() => setMenu('invite')} />
-      )}
-
-      {group && menu === 'invite' && (
-        <InviteUserModal user={user} group={group} onClose={() => setMenu('members')} />
       )}
 
       {group && menu === 'edit' && (

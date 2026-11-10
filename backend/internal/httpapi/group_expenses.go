@@ -162,6 +162,26 @@ func (h groupHandler) settlements(w http.ResponseWriter, r *http.Request) {
 	writeGroupJSON(w, http.StatusOK, settlements)
 }
 
+func (h groupHandler) memberBalances(w http.ResponseWriter, r *http.Request) {
+	uid, ok := UIDFromContext(r.Context())
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	balances, err := h.groups.MemberBalances(r.Context(), uid, r.PathValue("groupID"))
+	if err != nil {
+		writeExpenseError(w, err)
+		return
+	}
+
+	if balances == nil {
+		balances = []models.MemberBalance{}
+	}
+
+	writeGroupJSON(w, http.StatusOK, balances)
+}
+
 func (h groupHandler) userOwedSummary(w http.ResponseWriter, r *http.Request) {
 	uid, ok := UIDFromContext(r.Context())
 	if !ok {

@@ -126,6 +126,38 @@ func (s *GroupStore) Settlements(ctx context.Context, uid, groupID string) ([]mo
 	return settlements, nil
 }
 
+func (s *GroupStore) MemberBalances(ctx context.Context, uid, groupID string) ([]models.MemberBalance, error) {
+	if !validDocumentID(groupID) {
+		return nil, models.ErrInvalidGroupID
+	}
+
+	var balances []models.MemberBalance
+	err := s.db.RunTransaction(ctx, func(ctx context.Context, tx *firestore.Transaction) error {
+		group, err := s.readMemberGroup(tx, uid, groupID)
+		if err != nil {
+			return err
+		}
+
+		graph, _, err := s.loadDebtGraph(tx, groupID, group.Currency)
+		if err != nil {
+			return err
+		}
+
+		simplified, err := services.SimplifyDebts(graph)
+		if err != nil {
+			return err
+		}
+
+		balances, err = simplified.NetBalances(group.MemberUIDs)
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return balances, nil
+}
+
 func (s *GroupStore) UserOwedSummary(ctx context.Context, uid, groupID, userUID string) (models.UserOwedSummary, error) {
 	if !validDocumentID(groupID) {
 		return models.UserOwedSummary{}, models.ErrInvalidGroupID

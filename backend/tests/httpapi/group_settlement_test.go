@@ -108,6 +108,56 @@ func TestSettlementsEndpoint(t *testing.T) {
 	}
 }
 
+func TestMemberBalancesEndpoint(t *testing.T) {
+	for _, tc := range []struct {
+		name          string
+		authenticated bool
+		err           error
+		status        int
+	}{
+		{"member", true, nil, 200},
+		{"non-member", true, models.ErrGroupAccessForbidden, 403},
+		{"missing group", true, models.ErrGroupNotFound, 404},
+		{"unauthenticated", false, nil, 401},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			store := groupStoreStub{balances: func(_ context.Context, uid, groupID string) ([]models.MemberBalance, error) {
+				if uid != "member" || groupID != "group-id" {
+					t.Fatalf("uid=%s group=%s", uid, groupID)
+				}
+
+				if tc.err != nil {
+					return nil, tc.err
+				}
+
+				return []models.MemberBalance{{UID: "alice", NetAmountMinor: -500}, {UID: "bob", NetAmountMinor: 500}}, nil
+			}}
+			verifier := verifierFunc(func(context.Context, string) (*auth.Token, error) { return &auth.Token{UID: "member"}, nil })
+			r := httptest.NewRequest("GET", "/api/groups/group-id/balances", nil)
+			if tc.authenticated {
+				r.Header.Set("Authorization", "Bearer token")
+			}
+
+			w := httptest.NewRecorder()
+			httpapi.NewRouter(verifier, nil, store, nil).ServeHTTP(w, r)
+			if w.Code != tc.status {
+				t.Fatalf("status=%d body=%s", w.Code, w.Body.String())
+			}
+
+			if tc.status == 200 {
+				var balances []models.MemberBalance
+				if err := json.Unmarshal(w.Body.Bytes(), &balances); err != nil {
+					t.Fatal(err)
+				}
+
+				if len(balances) != 2 || balances[0].NetAmountMinor != -500 || balances[1].UID != "bob" {
+					t.Fatalf("balances=%+v", balances)
+				}
+			}
+		})
+	}
+}
+
 func TestUserOwedSummaryEndpoint(t *testing.T) {
 	for _, tc := range []struct {
 		name          string

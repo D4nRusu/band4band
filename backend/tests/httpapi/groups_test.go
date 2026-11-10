@@ -17,6 +17,7 @@ import (
 type groupStoreStub struct {
 	settleUp       func(context.Context, string, string, string, string, int64) error
 	settlements    func(context.Context, string, string) ([]models.Settlement, error)
+	balances       func(context.Context, string, string) ([]models.MemberBalance, error)
 	userOwed       func(context.Context, string, string, string) (models.UserOwedSummary, error)
 	userReceivable func(context.Context, string, string, string) (models.UserReceivableSummary, error)
 	deleteExpense  func(context.Context, string, string, string) error
@@ -246,6 +247,10 @@ func (s groupStoreStub) SettleUp(ctx context.Context, uid, groupID, fromUID, toU
 
 func (s groupStoreStub) Settlements(ctx context.Context, uid, groupID string) ([]models.Settlement, error) {
 	return s.settlements(ctx, uid, groupID)
+}
+
+func (s groupStoreStub) MemberBalances(ctx context.Context, uid, groupID string) ([]models.MemberBalance, error) {
+	return s.balances(ctx, uid, groupID)
 }
 
 func (s groupStoreStub) UserOwedSummary(ctx context.Context, uid, groupID, userUID string) (models.UserOwedSummary, error) {
