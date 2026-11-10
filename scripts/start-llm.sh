@@ -43,4 +43,4 @@ exec llama-server \
     --chat-template-kwargs '{"enable_thinking":false}' \
     --alias "${RECEIPT_LLM_MODEL:-receipts}" \
     --host 127.0.0.1 \
-    --port "${RECEIPT_LLM_PORT:-8081}"
+    --port "${RECEIPT_LLM_PORT:-8082}"
