@@ -4,13 +4,18 @@ import { GroupUnavailableError } from '@/lib/groups-api';
 
 export class ExpenseRejectedError extends Error {}
 
-export type ExpenseInput = {
-  participantUIDs: string[];
+type ExpenseFields = {
   name: string;
   categoryID: string;
   paidBy: string;
   amountMinor: number;
 };
+
+export type ExpenseShareInput = { uid: string; amountMinor: number };
+export type ExpenseSplit =
+  | { splitType?: 'equal'; participantUIDs: string[] }
+  | { splitType: 'unequal'; contributions: ExpenseShareInput[] };
+export type ExpenseInput = ExpenseFields & ExpenseSplit;
 
 export type ExpenseContribution = {
   uid: string;
@@ -23,9 +28,9 @@ export type ExpensePosition = {
   amountMinor: number;
 };
 
-export type Expense = Omit<ExpenseInput, 'participantUIDs'> & {
+export type Expense = ExpenseFields & {
   viewerPosition: ExpensePosition;
-  splitType?: 'equal';
+  splitType?: 'equal' | 'unequal';
   contributions?: ExpenseContribution[];
   id: string;
   groupID: string;
@@ -109,7 +114,7 @@ function isExpense(value: unknown): value is Expense {
 function hasValidContributions(expense: Record<string, unknown>): boolean {
   if (expense.splitType === undefined && expense.contributions === undefined) return true;
 
-  if (expense.splitType !== 'equal' || !Array.isArray(expense.contributions)
+  if ((expense.splitType !== 'equal' && expense.splitType !== 'unequal') || !Array.isArray(expense.contributions)
     || expense.contributions.length === 0 || !expense.contributions.every(isContribution)) return false;
 
   const contributions = expense.contributions;

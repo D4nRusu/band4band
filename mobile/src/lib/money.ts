@@ -1,4 +1,4 @@
-export function parseEuroAmount(value: string): number {
+export function parseEuroAmount(value: string, { allowZero = false }: { allowZero?: boolean } = {}): number {
   const normalized = value.trim().replace(',', '.');
   if (!/^\d+(?:\.\d{1,2})?$/.test(normalized)) {
     throw new Error('Enter the amount using numbers and up to two decimal places, such as 12.50 or 12,50.');
@@ -6,7 +6,7 @@ export function parseEuroAmount(value: string): number {
 
   const [whole, fraction = ''] = normalized.split('.');
   const minor = BigInt(whole) * 100n + BigInt(fraction.padEnd(2, '0'));
-  if (minor < 1n) {
+  if (minor < 1n && !allowZero) {
     throw new Error('Enter an amount of at least €0.01.');
   }
 
@@ -17,7 +17,7 @@ export function parseEuroAmount(value: string): number {
   return Number(minor);
 }
 
-export function formatExpenseAmount(amountMinor: number, currency: string): string {
+export function formatExpenseAmount(amountMinor: number | bigint, currency: string): string {
   const amount = BigInt(amountMinor);
   const whole = amount / 100n;
   const fraction = (amount % 100n).toString().padStart(2, '0');

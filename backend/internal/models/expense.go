@@ -20,14 +20,18 @@ var (
 	ErrInvalidExpenseCategory     = errors.New("choose an existing category from this group")
 	ErrInvalidExpensePayer        = errors.New("the payer must be a current group member")
 	ErrUnsupportedCurrency        = errors.New("this group currency is not supported yet")
+	ErrInvalidExpenseSplit        = errors.New("choose an equal or unequal split and provide only that mode's contributor fields")
+	ErrInvalidExpenseShares       = errors.New("enter an amount of zero or more for every contributor; the amounts must add up exactly to the expense total")
 )
 
 type ExpenseInput struct {
-	ParticipantUIDs []string `json:"participantUIDs"`
-	Name            string   `json:"name"`
-	CategoryID      string   `json:"categoryID"`
-	PaidBy          string   `json:"paidBy"`
-	AmountMinor     int64    `json:"amountMinor"`
+	SplitType       string                     `json:"splitType"`
+	Contributions   []ExpenseContributionInput `json:"contributions"`
+	ParticipantUIDs []string                   `json:"participantUIDs"`
+	Name            string                     `json:"name"`
+	CategoryID      string                     `json:"categoryID"`
+	PaidBy          string                     `json:"paidBy"`
+	AmountMinor     int64                      `json:"amountMinor"`
 }
 
 type Expense struct {
@@ -68,7 +72,11 @@ func (input ExpenseInput) Normalize() (ExpenseInput, error) {
 		return ExpenseInput{}, ErrInvalidExpensePayer
 	}
 
-	if _, err := EqualContributions(input.AmountMinor, input.ParticipantUIDs); err != nil {
+	if input.SplitType == "" {
+		input.SplitType = "equal"
+	}
+
+	if _, err := input.Allocations(); err != nil {
 		return ExpenseInput{}, err
 	}
 
