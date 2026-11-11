@@ -87,6 +87,8 @@ function GroupDetails({ user, groupID }: { user: AuthenticatedUser & { uid: stri
 
   function deletedExpense() {
     if (selectedExpense) expenses.removeFromList(selectedExpense.id);
+
+    settlement.reload();
     closeMenu();
   }
 
@@ -108,6 +110,7 @@ function GroupDetails({ user, groupID }: { user: AuthenticatedUser & { uid: stri
   function closeExpense() {
     closeMenu();
     expenses.reload();
+    settlement.reload();
   }
 
   function openPeople() {

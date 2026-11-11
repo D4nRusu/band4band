@@ -81,7 +81,8 @@ export function GroupExpenseList({
   onSettleUp,
   onStats,
   onLists,
-  onScanReceipt, onOpen,
+  onScanReceipt,
+  onOpen,
   onRetry,
   onRetryDebts,
 }: GroupExpenseListProps) {
@@ -133,14 +134,21 @@ export function GroupExpenseList({
       </View>
 
       <View style={styles.actions}>
-        <View style={styles.actions}>
         <Pressable onPress={onAdd} disabled={addDisabled} accessibilityRole="button"
-            accessibilityLabel="Add expense" accessibilityState={{ disabled: addDisabled }}
-            style={({ pressed }) => [styles.action, { backgroundColor: theme.backgroundElement },
-              pressed && styles.pressed, addDisabled && styles.disabled]}>
-            <ThemedText style={styles.plus} accessible={false}>+</ThemedText>
-            <ThemedText type="smallBold">Add expense</ThemedText>
-          </Pressable>
+          accessibilityLabel="Add expense" accessibilityState={{ disabled: addDisabled }}
+          style={({ pressed }) => [styles.action, { backgroundColor: theme.backgroundElement },
+            pressed && styles.pressed, addDisabled && styles.disabled]}>
+          <ThemedText style={styles.plus} accessible={false}>+</ThemedText>
+          <ThemedText type="smallBold">Add expense</ThemedText>
+        </Pressable>
+
+        <Pressable onPress={onScanReceipt} disabled={addDisabled} accessibilityRole="button"
+          accessibilityLabel="Scan a receipt" accessibilityState={{ disabled: addDisabled }}
+          style={({ pressed }) => [styles.action, { backgroundColor: theme.backgroundElement },
+            pressed && styles.pressed, addDisabled && styles.disabled]}>
+          <SymbolView name={{ ios: 'receipt', android: 'receipt_long', web: 'receipt_long' }} size={20} tintColor={theme.text} />
+          <ThemedText type="smallBold">From receipt</ThemedText>
+        </Pressable>
 
         <Pressable onPress={onSettleUp} disabled={settleDisabled} accessibilityRole="button"
           accessibilityLabel="Settle up" accessibilityState={{ disabled: settleDisabled }}
@@ -161,15 +169,6 @@ export function GroupExpenseList({
       </View>
 
       <HistoryFilterPicker value={filter} onChange={setFilter} />
-
-        <Pressable onPress={onScanReceipt} disabled={addDisabled} accessibilityRole="button"
-          accessibilityLabel="Scan a receipt" accessibilityState={{ disabled: addDisabled }}
-          style={({ pressed }) => [styles.add, { backgroundColor: theme.backgroundElement },
-            pressed && styles.pressed, addDisabled && styles.disabled]}>
-          <SymbolView name={{ ios: 'receipt', android: 'receipt_long', web: 'receipt_long' }} size={20} tintColor={theme.text} />
-          <ThemedText type="smallBold">From receipt</ThemedText>
-        </Pressable>
-      </View>
       {loading && <ActivityIndicator accessibilityLabel="Loading expenses" />}
       {error && (
         <View style={styles.feedback}>
@@ -232,7 +231,6 @@ function buildHistory(expenses: Expense[], settlements: Settlement[], filter: Hi
 
 const styles = StyleSheet.create({
   section: { paddingHorizontal: 24, paddingTop: 12, paddingBottom: 24, gap: 16 },
-  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   debtCard: { borderRadius: 12, padding: 14, gap: 8 },
   debtRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12 },
   actions: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
