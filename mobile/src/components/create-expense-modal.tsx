@@ -11,10 +11,11 @@ import { ExpenseParticipants } from '@/components/expense-participants';
 import { ExpenseChoices } from '@/components/expense-choices';
 import { ThemedText } from '@/components/themed-text';
 import { useExpenseOptions } from '@/hooks/use-expense-options';
+import { useExpenseSplit } from '@/hooks/use-expense-split';
 import { useTheme } from '@/hooks/use-theme';
 import type { AuthenticatedUser } from '@/lib/api';
 import { categoryIcons } from '@/lib/categories-api';
-import type { ExpenseInput } from '@/lib/expenses-api';
+import type { ExpenseInput, ExpenseSplit } from '@/lib/expenses-api';
 import type { Group } from '@/lib/groups-api';
 import { parseEuroAmount } from '@/lib/money';
 
@@ -34,8 +35,7 @@ export function CreateExpenseModal({ user, group, saving, error, onSave, onClose
   const [amount, setAmount] = useState('');
   const [categoryID, setCategoryID] = useState('default_other');
   const [paidBy, setPaidBy] = useState(user.uid);
-  const [excludedUIDs, setExcludedUIDs] = useState<string[]>([]);
-  const participantUIDs = options.members.filter((member) => !excludedUIDs.includes(member.uid)).map((member) => member.uid);
+  const split = useExpenseSplit(options.members, amount);
   const [validationError, setValidationError] = useState<string | null>(null);
   const inputStyle = [styles.input, { color: theme.text, borderColor: theme.textSecondary }];
   const busy = saving || options.loading || options.error !== null;
@@ -62,9 +62,18 @@ export function CreateExpenseModal({ user, group, saving, error, onSave, onClose
   }
 
   function toggleParticipant(uid: string) {
-    setExcludedUIDs((previous) => previous.includes(uid)
-      ? previous.filter((excluded) => excluded !== uid)
-      : [...previous, uid]);
+    split.toggleParticipant(uid);
+    setValidationError(null);
+  }
+
+  function chooseSplitMode(mode: string) {
+    if (mode === 'equal' || mode === 'unequal') split.setMode(mode);
+
+    setValidationError(null);
+  }
+
+  function changeShare(uid: string, value: string) {
+    split.changeShare(uid, value);
     setValidationError(null);
   }
 
@@ -99,13 +108,16 @@ export function CreateExpenseModal({ user, group, saving, error, onSave, onClose
       return;
     }
 
-    if (participantUIDs.length === 0) {
-      setValidationError('Nobody is included in the split. Select at least one person under “Split equally between”.');
+    let allocation: ExpenseSplit;
+    try {
+      allocation = split.buildSplit(amountMinor);
+    } catch (cause) {
+      setValidationError(cause instanceof Error ? cause.message : 'Check the contributor amounts.');
       return;
     }
 
     setValidationError(null);
-    if (await onSave({ name: trimmedName, amountMinor, categoryID, paidBy, participantUIDs })) onClose();
+    if (await onSave({ name: trimmedName, amountMinor, categoryID, paidBy, ...allocation })) onClose();
   }
 
   return (
@@ -142,8 +154,12 @@ export function CreateExpenseModal({ user, group, saving, error, onSave, onClose
                   choices={options.categories.map((category) => ({ id: category.id, label: `${categoryIcons[category.icon].image} ${category.name}` }))} />
                 <ExpensePayerSelect members={options.members} selectedUID={paidBy} currentUID={user.uid}
                   disabled={saving} onSelect={choosePayer} />
-                <ExpenseParticipants members={options.members} selectedUIDs={participantUIDs}
-                  disabled={saving} onToggle={toggleParticipant} />
+                <ExpenseChoices label="Split" selected={split.mode} disabled={saving} onSelect={chooseSplitMode}
+                  choices={[{ id: 'equal', label: 'Equally' }, { id: 'unequal', label: 'By amount' }]} />
+                <ExpenseParticipants members={options.members} selectedUIDs={split.participantUIDs}
+                  disabled={saving} onToggle={toggleParticipant} mode={split.mode}
+                  amounts={split.amounts} onChangeAmount={changeShare} />
+                {split.feedback && <ThemedText type="small" themeColor="textSecondary" accessibilityLiveRegion="polite">{split.feedback}</ThemedText>}
               </>
             )}
 

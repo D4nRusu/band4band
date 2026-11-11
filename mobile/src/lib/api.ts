@@ -46,7 +46,7 @@ async function requestProfile(
 export async function authenticatedRequest(
   user: AuthenticatedUser,
   path: string,
-  options: { method?: string; body?: string; signal?: AbortSignal } = {},
+  options: { method?: string; body?: string | FormData; signal?: AbortSignal } = {},
 ): Promise<Response> {
   const baseUrl = getApiBaseUrl();
   const firebaseIdToken = await getFirebaseIdToken(user);
@@ -55,7 +55,8 @@ export async function authenticatedRequest(
     ...options,
     headers: {
       Authorization: `Bearer ${firebaseIdToken}`,
-      'Content-Type': 'application/json',
+      // Native fetch supplies the multipart boundary when uploading a FormData body.
+      ...(options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
     },
     redirect: 'error',
   });

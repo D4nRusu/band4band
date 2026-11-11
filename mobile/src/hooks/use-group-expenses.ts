@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { AuthenticatedUser } from '@/lib/api';
 import { createExpense, ExpenseRejectedError, getExpenses, type Expense, type ExpenseInput } from '@/lib/expenses-api';
 import { GroupUnavailableError } from '@/lib/groups-api';
+import type { ReceiptExpenseInput } from '@/lib/receipt-assignment';
 
 export function useGroupExpenses(user: AuthenticatedUser, groupID: string) {
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -62,7 +63,7 @@ export function useGroupExpenses(user: AuthenticatedUser, groupID: string) {
     return () => cancelLoad.current?.();
   }, [reload]));
 
-  async function save(input: ExpenseInput): Promise<boolean> {
+  async function save(input: ExpenseInput | ReceiptExpenseInput): Promise<boolean> {
     if (request.current) return false;
 
     cancelLoad.current?.();

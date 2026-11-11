@@ -21,3 +21,16 @@ test('formats exact cents, including the largest safe JSON integer', () => {
   assert.equal(formatExpenseAmount(1250, 'EUR'), '€12.50');
   assert.equal(formatExpenseAmount(Number.MAX_SAFE_INTEGER, 'EUR'), '€90071992547409.91');
 });
+
+test('allows explicit zero contributions without allowing a zero expense total', () => {
+  for (const value of ['0', '0.00', '0,00']) {
+    assert.equal(parseEuroAmount(value, { allowZero: true }), 0);
+    assert.throws(() => parseEuroAmount(value));
+  }
+
+  for (const value of ['', '-1', '0.001', '90071992547409.92']) {
+    assert.throws(() => parseEuroAmount(value, { allowZero: true }));
+  }
+
+  assert.equal(formatExpenseAmount(BigInt(Number.MAX_SAFE_INTEGER) * 2n, 'EUR'), '€180143985094819.82');
+});

@@ -8,7 +8,7 @@ import (
 )
 
 func (s *GroupStore) expensePeople(tx *firestore.Transaction, group models.Group, input models.ExpenseInput) (string, []models.ExpenseContribution, error) {
-	contributions, err := models.EqualContributions(input.AmountMinor, input.ParticipantUIDs)
+	contributions, err := input.Allocations()
 	if err != nil {
 		return "", nil, err
 	}

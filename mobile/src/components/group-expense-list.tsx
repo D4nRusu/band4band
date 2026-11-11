@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { SymbolView } from 'expo-symbols';
 import { ActivityIndicator, Button, Pressable, StyleSheet, View } from 'react-native';
 
 import { ExpenseCard } from '@/components/expense-card';
@@ -57,6 +58,7 @@ type GroupExpenseListProps = {
   onSettleUp: () => void;
   onStats: () => void;
   onLists: () => void;
+  onScanReceipt: () => void;
   onOpen: (expense: Expense) => void;
   onRetry: () => void;
   onRetryDebts: () => void;
@@ -79,6 +81,7 @@ export function GroupExpenseList({
   onSettleUp,
   onStats,
   onLists,
+  onScanReceipt,
   onOpen,
   onRetry,
   onRetryDebts,
@@ -139,6 +142,14 @@ export function GroupExpenseList({
           <ThemedText type="smallBold">Add expense</ThemedText>
         </Pressable>
 
+        <Pressable onPress={onScanReceipt} disabled={addDisabled} accessibilityRole="button"
+          accessibilityLabel="Scan a receipt" accessibilityState={{ disabled: addDisabled }}
+          style={({ pressed }) => [styles.action, { backgroundColor: theme.backgroundElement },
+            pressed && styles.pressed, addDisabled && styles.disabled]}>
+          <SymbolView name={{ ios: 'receipt', android: 'receipt_long', web: 'receipt_long' }} size={20} tintColor={theme.text} />
+          <ThemedText type="smallBold">From receipt</ThemedText>
+        </Pressable>
+
         <Pressable onPress={onSettleUp} disabled={settleDisabled} accessibilityRole="button"
           accessibilityLabel="Settle up" accessibilityState={{ disabled: settleDisabled }}
           style={({ pressed }) => [styles.action, { backgroundColor: theme.backgroundElement },
@@ -158,7 +169,6 @@ export function GroupExpenseList({
       </View>
 
       <HistoryFilterPicker value={filter} onChange={setFilter} />
-
       {loading && <ActivityIndicator accessibilityLabel="Loading expenses" />}
       {error && (
         <View style={styles.feedback}>

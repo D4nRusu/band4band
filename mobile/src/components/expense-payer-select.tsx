@@ -7,6 +7,8 @@ import { useTheme } from '@/hooks/use-theme';
 import type { GroupMember } from '@/lib/groups-api';
 
 type ExpensePayerSelectProps = {
+  label?: string;
+  placeholder?: string;
   members: GroupMember[];
   selectedUID: string;
   currentUID: string;
@@ -18,7 +20,8 @@ function memberName(member: GroupMember): string {
   return member.name || member.username || member.uid;
 }
 
-export function ExpensePayerSelect({ members, selectedUID, currentUID, disabled, onSelect }: ExpensePayerSelectProps) {
+export function ExpensePayerSelect({ members, selectedUID, currentUID, disabled, onSelect,
+  label = 'Paid by', placeholder = 'Choose a payer' }: ExpensePayerSelectProps) {
   const theme = useTheme();
   const [open, setOpen] = useState(false);
   const selected = members.find((member) => member.uid === selectedUID);
@@ -36,15 +39,15 @@ export function ExpensePayerSelect({ members, selectedUID, currentUID, disabled,
 
   return (
     <View style={styles.section}>
-      <ThemedText>Paid by</ThemedText>
+      <ThemedText>{label}</ThemedText>
       <View style={[styles.dropdown, { borderColor: expanded ? theme.textSecondary : theme.backgroundSelected }]}>
         <Pressable onPress={toggle} disabled={disabled} accessibilityRole="button"
-          accessibilityLabel={`Paid by ${selected ? memberName(selected) : 'Choose a payer'}`}
+          accessibilityLabel={`${label}: ${selected ? memberName(selected) : placeholder}`}
           accessibilityHint="Opens the list of group members"
           accessibilityState={{ expanded, disabled }}
           style={({ pressed }) => [styles.trigger, { backgroundColor: pressed ? theme.backgroundSelected : theme.backgroundElement },
             disabled && styles.disabled]}>
-          <PayerLabel member={selected} isYou={selectedUID === currentUID} />
+          <PayerLabel member={selected} isYou={selectedUID === currentUID} placeholder={placeholder} />
           <SymbolView name={expanded
             ? { ios: 'chevron.up', android: 'expand_less', web: 'expand_less' }
             : { ios: 'chevron.down', android: 'expand_more', web: 'expand_more' }} size={20} tintColor={theme.textSecondary} />
@@ -76,10 +79,11 @@ export function ExpensePayerSelect({ members, selectedUID, currentUID, disabled,
   );
 }
 
-function PayerLabel({ member, isYou, showDetail = false }: { member?: GroupMember; isYou: boolean; showDetail?: boolean }) {
+function PayerLabel({ member, isYou, showDetail = false, placeholder = 'Choose a payer' }:
+  { member?: GroupMember; isYou: boolean; showDetail?: boolean; placeholder?: string }) {
   const theme = useTheme();
   const [failedPhoto, setFailedPhoto] = useState<string | null>(null);
-  const name = member ? memberName(member) : 'Choose a payer';
+  const name = member ? memberName(member) : placeholder;
   const initial = Array.from(name.trim())[0]?.toUpperCase() || '?';
   const detail = member?.username ? `@${member.username}` : member?.email;
   const photoURL = member?.photoURL ?? '';

@@ -1,16 +1,22 @@
 import { authenticatedRequest, type AuthenticatedUser } from '@/lib/api';
 import { categoryIcons, type CategoryIcon } from '@/lib/categories-api';
 import { GroupUnavailableError } from '@/lib/groups-api';
+import type { ReceiptExpenseInput } from '@/lib/receipt-assignment';
 
 export class ExpenseRejectedError extends Error {}
 
-export type ExpenseInput = {
-  participantUIDs: string[];
+type ExpenseFields = {
   name: string;
   categoryID: string;
   paidBy: string;
   amountMinor: number;
 };
+
+export type ExpenseShareInput = { uid: string; amountMinor: number };
+export type ExpenseSplit =
+  | { splitType?: 'equal'; participantUIDs: string[] }
+  | { splitType: 'unequal'; contributions: ExpenseShareInput[] };
+export type ExpenseInput = ExpenseFields & ExpenseSplit;
 
 export type ExpenseContribution = {
   uid: string;
@@ -23,9 +29,9 @@ export type ExpensePosition = {
   amountMinor: number;
 };
 
-export type Expense = Omit<ExpenseInput, 'participantUIDs'> & {
+export type Expense = ExpenseFields & {
   viewerPosition: ExpensePosition;
-  splitType?: 'equal';
+  splitType?: 'equal' | 'unequal';
   contributions?: ExpenseContribution[];
   id: string;
   groupID: string;
@@ -48,9 +54,10 @@ export async function getExpenses(user: AuthenticatedUser, groupID: string, sign
 }
 
 export async function createExpense(
-  user: AuthenticatedUser, groupID: string, input: ExpenseInput, signal?: AbortSignal,
+  user: AuthenticatedUser, groupID: string, input: ExpenseInput | ReceiptExpenseInput, signal?: AbortSignal,
 ): Promise<Expense> {
-  const response = await authenticatedRequest(user, `/api/groups/${encodeURIComponent(groupID)}/expenses`, {
+  const route = 'items' in input ? 'receipts/expense' : 'expenses';
+  const response = await authenticatedRequest(user, `/api/groups/${encodeURIComponent(groupID)}/${route}`, {
     method: 'POST', body: JSON.stringify(input), signal,
   });
   await checkResponse(response);
@@ -80,7 +87,8 @@ async function checkResponse(response: Response) {
 
   if (response.status === 400) {
     const body: unknown = await response.json();
-    if (body && typeof body === 'object' && 'code' in body && body.code === 'invalid_expense'
+    if (body && typeof body === 'object' && 'code' in body
+      && (body.code === 'invalid_expense' || body.code === 'invalid_receipt_expense')
       && 'message' in body && typeof body.message === 'string') {
       throw new ExpenseRejectedError(`${body.message.charAt(0).toUpperCase()}${body.message.slice(1)}.`);
     }
@@ -109,7 +117,7 @@ function isExpense(value: unknown): value is Expense {
 function hasValidContributions(expense: Record<string, unknown>): boolean {
   if (expense.splitType === undefined && expense.contributions === undefined) return true;
 
-  if (expense.splitType !== 'equal' || !Array.isArray(expense.contributions)
+  if ((expense.splitType !== 'equal' && expense.splitType !== 'unequal') || !Array.isArray(expense.contributions)
     || expense.contributions.length === 0 || !expense.contributions.every(isContribution)) return false;
 
   const contributions = expense.contributions;

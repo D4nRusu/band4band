@@ -55,7 +55,7 @@ func TestGroupDetailsEndpoints(t *testing.T) {
 				}
 
 				response := httptest.NewRecorder()
-				httpapi.NewRouter(verifier, nil, store, nil).ServeHTTP(response, request)
+				httpapi.NewRouter(verifier, nil, store, nil, nil).ServeHTTP(response, request)
 
 				if response.Code != tc.status || called != tc.authenticated {
 					t.Fatalf("status=%d called=%v body=%s", response.Code, called, response.Body.String())

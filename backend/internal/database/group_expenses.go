@@ -123,7 +123,7 @@ func (s *GroupStore) CreateExpense(ctx context.Context, uid, groupID string, inp
 		}
 
 		if err := tx.Create(expenseRef, map[string]any{
-			"splitType":     "equal",
+			"splitType":     input.SplitType,
 			"contributions": contributions,
 			"name":          input.Name,
 			"categoryID":    category.ID,

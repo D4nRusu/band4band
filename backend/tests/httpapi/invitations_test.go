@@ -40,7 +40,7 @@ func TestInvitationRoutesRequireAuthentication(t *testing.T) {
 	} {
 		t.Run(route.path, func(t *testing.T) {
 			w := httptest.NewRecorder()
-			httpapi.NewRouter(nil, nil, nil, nil).ServeHTTP(w, httptest.NewRequest(route.method, route.path, nil))
+			httpapi.NewRouter(nil, nil, nil, nil, nil).ServeHTTP(w, httptest.NewRequest(route.method, route.path, nil))
 
 			if w.Code != 401 {
 				t.Fatalf("status=%d", w.Code)
@@ -80,7 +80,7 @@ func TestInviteUsesVerifiedSenderAndNormalizesUsername(t *testing.T) {
 			r := httptest.NewRequest("POST", "/api/groups/group-id/invitations", strings.NewReader(tc.body))
 			r.Header.Set("Authorization", "Bearer token")
 			w := httptest.NewRecorder()
-			httpapi.NewRouter(verifier, nil, nil, store).ServeHTTP(w, r)
+			httpapi.NewRouter(verifier, nil, nil, store, nil).ServeHTTP(w, r)
 
 			if w.Code != tc.status || (tc.status == 400 && called) {
 				t.Fatalf("status=%d storeCalled=%v body=%s", w.Code, called, w.Body.String())
@@ -107,7 +107,7 @@ func TestInvitationResponsesUseAuthenticatedRecipient(t *testing.T) {
 			r := httptest.NewRequest("POST", "/api/invitations/invite-id/"+action+"?uid=other", nil)
 			r.Header.Set("Authorization", "Bearer token")
 			w := httptest.NewRecorder()
-			httpapi.NewRouter(verifier, nil, nil, store).ServeHTTP(w, r)
+			httpapi.NewRouter(verifier, nil, nil, store, nil).ServeHTTP(w, r)
 
 			if w.Code != 403 {
 				t.Fatalf("status=%d body=%s", w.Code, w.Body.String())
@@ -131,7 +131,7 @@ func TestInvitationInboxUsesAuthenticatedRecipient(t *testing.T) {
 	r := httptest.NewRequest("GET", "/api/invitations?uid=other", nil)
 	r.Header.Set("Authorization", "Bearer token")
 	w := httptest.NewRecorder()
-	httpapi.NewRouter(verifier, nil, nil, store).ServeHTTP(w, r)
+	httpapi.NewRouter(verifier, nil, nil, store, nil).ServeHTTP(w, r)
 
 	if w.Code != 200 || strings.TrimSpace(w.Body.String()) != "[]" {
 		t.Fatalf("status=%d body=%s", w.Code, w.Body.String())
@@ -153,7 +153,7 @@ func TestOwnerCannotUseLeaveEndpoint(t *testing.T) {
 	r := httptest.NewRequest("POST", "/api/groups/group-id/leave", nil)
 	r.Header.Set("Authorization", "Bearer token")
 	w := httptest.NewRecorder()
-	httpapi.NewRouter(verifier, nil, store, nil).ServeHTTP(w, r)
+	httpapi.NewRouter(verifier, nil, store, nil, nil).ServeHTTP(w, r)
 
 	if w.Code != 403 {
 		t.Fatalf("status=%d body=%s", w.Code, w.Body.String())
