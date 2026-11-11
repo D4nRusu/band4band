@@ -30,6 +30,7 @@ PAAM project
 - Achievements (drank 1000000 beers)
 - Tasks (wash the pan, who does it, basically todo)
 - QR scan for group invite
+- Convert receipts in currencies other than that of the group
 
 # Packages to add
 

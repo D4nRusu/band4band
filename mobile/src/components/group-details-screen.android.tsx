@@ -100,6 +100,11 @@ function GroupDetails({ user, groupID }: { user: AuthenticatedUser & { uid: stri
     setMenu('settle');
   }
 
+  function openReceipt() {
+    expenses.clearSaveError();
+    setMenu('receipt');
+  }
+
   function closeExpense() {
     closeMenu();
     expenses.reload();
@@ -171,7 +176,7 @@ function GroupDetails({ user, groupID }: { user: AuthenticatedUser & { uid: stri
               onSettleUp={openSettle}
               onStats={openStats}
               onLists={openLists}
-              onScanReceipt={() => setMenu('receipt')}
+              onScanReceipt={openReceipt}
               onOpen={showExpenseDetails}
               onRetry={expenses.reload}
               onRetryDebts={settlement.reload}
@@ -205,7 +210,8 @@ function GroupDetails({ user, groupID }: { user: AuthenticatedUser & { uid: stri
       )}
 
       {group && menu === 'receipt' && (
-        <ReceiptScanModal user={user} groupID={groupID} onClose={closeMenu} />
+        <ReceiptScanModal user={user} group={group} saving={expenses.saving} error={expenses.saveError}
+          onSave={expenses.save} onClose={closeExpense} />
       )}
 
       {group && menu === 'settle' && (

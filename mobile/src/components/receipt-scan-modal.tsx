@@ -1,21 +1,30 @@
 import { Image } from 'expo-image';
 import { SymbolView } from 'expo-symbols';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Button, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Button, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { ErrorMessage } from '@/components/error-message';
-import { ReceiptDraftDetails } from '@/components/receipt-draft-details';
+import { ReceiptAssignmentForm } from '@/components/receipt-assignment-form';
 import { ThemedText } from '@/components/themed-text';
 import { useReceiptExtraction } from '@/hooks/use-receipt-extraction';
 import { useTheme } from '@/hooks/use-theme';
 import type { AuthenticatedUser } from '@/lib/api';
+import type { Group } from '@/lib/groups-api';
+import type { ReceiptExpenseInput } from '@/lib/receipt-assignment';
 import { pickReceiptPhoto } from '@/lib/receipt-photo';
 
-type ReceiptScanModalProps = { user: AuthenticatedUser; groupID: string; onClose: () => void };
+type ReceiptScanModalProps = {
+  user: AuthenticatedUser & { uid: string };
+  group: Group;
+  saving: boolean;
+  error: string | null;
+  onSave: (input: ReceiptExpenseInput) => Promise<boolean>;
+  onClose: () => void;
+};
 
-export function ReceiptScanModal({ user, groupID, onClose }: ReceiptScanModalProps) {
+export function ReceiptScanModal({ user, group, saving, error, onSave, onClose }: ReceiptScanModalProps) {
   const theme = useTheme();
-  const receipt = useReceiptExtraction(user, groupID);
+  const receipt = useReceiptExtraction(user, group.id);
   const [picking, setPicking] = useState(false);
   const active = useRef(true);
   const pickerOpen = useRef(false);
@@ -26,7 +35,7 @@ export function ReceiptScanModal({ user, groupID, onClose }: ReceiptScanModalPro
   }, []);
 
   async function choosePhoto(source: 'camera' | 'library') {
-    if (pickerOpen.current || receipt.scanning) return;
+    if (pickerOpen.current || receipt.scanning || saving) return;
 
     pickerOpen.current = true;
     setPicking(true);
@@ -43,45 +52,50 @@ export function ReceiptScanModal({ user, groupID, onClose }: ReceiptScanModalPro
   }
 
   function close() {
+    if (saving) return;
+
     receipt.cancel();
     onClose();
   }
 
   return (
     <Modal transparent animationType="fade" onRequestClose={close}>
-      <View style={styles.overlay}>
+      <KeyboardAvoidingView style={styles.overlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={[styles.dialog, { backgroundColor: theme.background }]} accessibilityViewIsModal>
           <View style={styles.header}>
-            <Pressable onPress={close} accessibilityRole="button" accessibilityLabel="Close receipt scanner" style={styles.back}>
+            <Pressable onPress={close} disabled={saving} accessibilityRole="button" accessibilityLabel="Close receipt scanner" style={styles.back}>
               <SymbolView name={{ ios: 'arrow.left', android: 'arrow_back', web: 'arrow_back' }} size={24} tintColor={theme.text} />
             </Pressable>
             <ThemedText type="subtitle" style={styles.title} accessibilityRole="header">Scan receipt</ThemedText>
           </View>
-          <ScrollView contentContainerStyle={styles.content}>
+          <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
             <ThemedText type="small" themeColor="textSecondary">Take a clear photo of the whole receipt, or select one already on your phone.</ThemedText>
             <View style={styles.actions}>
-              <Button title="Take photo" disabled={picking || receipt.scanning} onPress={() => choosePhoto('camera')} />
-              <Button title="Choose photo" disabled={picking || receipt.scanning} onPress={() => choosePhoto('library')} />
+              <Button title="Take photo" disabled={picking || receipt.scanning || saving} onPress={() => choosePhoto('camera')} />
+              <Button title="Choose photo" disabled={picking || receipt.scanning || saving} onPress={() => choosePhoto('library')} />
             </View>
             {picking && <ActivityIndicator accessibilityLabel="Opening receipt photo" />}
             {receipt.photo && (
               <>
                 <Image source={{ uri: receipt.photo.uri }} style={styles.photo} contentFit="contain" accessibilityLabel="Selected receipt photo" />
-                <Button title={receipt.draft ? 'Scan again' : 'Scan receipt'} onPress={receipt.scan} disabled={picking || receipt.scanning} />
+                <Button title={receipt.draft ? 'Scan again' : 'Scan receipt'} onPress={receipt.scan} disabled={picking || receipt.scanning || saving} />
               </>
             )}
             {receipt.scanning && (
               <View style={styles.feedback}>
                 <ActivityIndicator accessibilityLabel="Extracting receipt items" />
-                <ThemedText type="small">Reading your receipt. This may take up to two minutes.</ThemedText>
+                <ThemedText type="small">Reading your receipt. This may take a few seconds.</ThemedText>
                 <Button title="Cancel scan" onPress={receipt.cancel} />
               </View>
             )}
             {receipt.error && <ErrorMessage message={receipt.error} />}
-            {receipt.draft && <ReceiptDraftDetails draft={receipt.draft} />}
+            {receipt.draft && (
+              <ReceiptAssignmentForm user={user} group={group} draft={receipt.draft}
+                saving={saving} error={error} onSave={onSave} onSaved={onClose} />
+            )}
           </ScrollView>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

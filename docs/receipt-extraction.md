@@ -68,9 +68,13 @@ adb reverse tcp:8081 tcp:8081
 
 The phone talks only to Go; no forwarding of the model port is needed. On first capture, allow the camera permission. Photo-library selection uses the system chooser; no microphone permission is requested. If a photo is over 10 MiB or 25 megapixels, use the camera's standard-resolution mode or choose a smaller JPEG/PNG.
 
-The result lists item names, prices, and the printed total. A red message highlights a different item sum. Cancel scan or the back arrow aborts the request; closing the modal discards the in-memory draft. There is no automatic retry. Uploads read the local photo into a real Blob: SDK 57 does not accept legacy URI objects as multipart file parts. This upload correction is JavaScript-only; reload the app through Metro, without rebuilding the APK. The current UI is an extraction preview: item editing, assigning users, creating an expense, and storing the image in Cloud Storage are not implemented yet. The picker may create local cache files; no manual token files or cloud image records are created.
+The result lists item names, quantities, editable line prices, and an editable receipt total. A red message highlights a different item sum. Assign every line to a group member using its dropdown. Whole quantities greater than one offer Split units between people, where each selected member gets a whole number of units; Assign all to one person restores whole-line assignment. Fractional and unknown quantities are assigned as a whole line. Choose an expense name, category, and payer, then confirm creation.
 
-Check a clear receipt, a mismatching/unreadable receipt, denied camera permission, choosing an existing image, cancellation, and a stopped model server. Verify ordinary expense creation and sign-out still work. Physical-device and live-model verification remains manual.
+The reviewed line totals must equal the reviewed receipt total. If the receipt and group currencies differ, explicitly confirm using the same numeric amounts in the group currency. This applies no exchange rate. Saving creates a standard unequal expense and updates debts through the existing Go transaction. Receipt rows and photos are not persisted yet.
+
+Cancel scan or the back arrow aborts extraction; closing the modal discards the in-memory draft. While saving, closing, rescanning, and editing are disabled. There is no automatic retry; if a save result is uncertain, close and refresh expenses before retrying. Uploads read the local photo into a real Blob because SDK 57 does not accept legacy URI objects as multipart file parts. Reload the app through Metro without rebuilding the APK. The picker may create local cache files; no manual token files or cloud image records are created.
+
+Check a clear receipt, price corrections, a mismatching/unreadable receipt, whole-line and per-unit assignments, missing assignments, currency confirmation, denied camera permission, choosing an existing image, cancellation, and a stopped model server. Verify the created unequal expense, its debts, ordinary expense creation, and sign-out. Physical-device and live-model verification remains manual.
 
 ## Optional command-line request
 
@@ -104,7 +108,15 @@ Item IDs identify rows within that draft only; nothing is persisted. Preview pri
 
 `quantity` is the positive numeric multiplier printed for the line. It may be fractional for weighed items. Go also accepts quoted values such as `"2 buc"` and `"0,75 kg"`, keeping only the number. Missing, unreadable, or invalid quantities are returned as `null` and omitted from the mobile display when the printed line total is available.
 
-Go normalizes `LEI` to `RON`. The read-only preview uses the receipt currency even when the group uses a different currency. Missing or unreadable required information produces an error rather than guessing the currency or total. A different item sum is still returned with `totalsMatch: false`, preserving the printed total and item values for later user review. Separately printed discounts can appear as negative draft lines; their eventual allocation rules are outside this milestone. JSON/schema validation does not establish that the image was read accurately.
+Go normalizes `LEI` to `RON`. The extraction response uses the receipt currency even when the group uses a different currency. Missing or unreadable required information produces an error rather than guessing the currency or total. A different item sum is still returned with `totalsMatch: false`, preserving the printed total and item values for user review and correction. Separately printed discounts can appear as negative draft lines and reduce their assignee's final share. JSON/schema validation does not establish that the image was read accurately.
+
+## Creating an expense from reviewed items
+
+Authenticated `POST /api/groups/{groupID}/receipts/expense` accepts `name`, `categoryID`, `paidBy`, `currency`, `confirmCurrency`, `totalMinor`, and `items: [{amountMinor, units, assignments: [{uid, units}]}]`. Prices are reviewed line totals in integer minor units. Whole-line assignments use all of that line's units; fractional or unknown quantities use one assignable portion for the entire line. The request is limited to 256 KiB and 200 lines.
+
+Go validates complete assignments, distinct members within each line, exact totals, and explicit currency confirmation. It splits a line's cents across units and aggregates shares by UID. Any leftover cents go to units assigned to the first UIDs in ascending order. For example, 10.01 across three units gives two units 3.34 each and one unit 3.33. Assigning the first two units to one person gives that person 6.68.
+
+Negative discount lines reduce the assigned person's aggregate share. Each person's final share must remain zero or positive. The existing creation transaction verifies current caller, payer, and contributor membership plus category availability, then saves an unequal expense and updates both debt graphs. Only the aggregate expense is stored; receipt rows and the photo remain temporary.
 
 ## Limits and failures
 
@@ -146,4 +158,8 @@ The mobile `Response.blob()` warning describes extra copying/base64 overhead whi
 - `internal/httpapi/routes.go` and `main.go`: route/dependency registration and environment configuration.
 - `tests/httpapi/receipts_test.go` and `tests/services/receipt_extraction_test.go`: focused authorization, upload, model, arithmetic, cancellation, and failure tests.
 
-Test execution remains deferred at the user's request. No real receipt, Firebase group, physical phone, or local model has been exercised as part of implementation. Verify a real receipt using the mobile flow, confirm item/total accuracy, check a mismatched or unreadable receipt, and measure latency on the hosting hardware.
+The assignment milestone adds `backend/internal/models/receipt_expense.go`, `backend/internal/httpapi/receipt_expenses.go`, and model/HTTP tests in `backend/tests/models/receipt_expense_test.go` and `backend/tests/httpapi/receipt_expenses_test.go`. The new endpoint is registered in `backend/internal/httpapi/routes.go`.
+
+Mobile additions are `src/components/receipt-assignment-form.tsx`, `src/components/receipt-item-editor.tsx`, `src/hooks/use-receipt-assignment.ts`, `src/lib/receipt-assignment.ts`, and `tests/receipt-assignment.test.mjs`. Integration updates `receipt-scan-modal.tsx`, `group-details-screen.android.tsx`, `expense-payer-select.tsx`, `use-group-expenses.ts`, and `expenses-api.ts`. The form replaces the former `receipt-draft-details.tsx` component. This guide and `docs/architecture.md` document the new flow.
+
+Go model and HTTP tests, Go build/vet, and the four mobile assignment helper tests passed. Full mobile typecheck and lint still report existing errors in `group-card.tsx` and `use-color-scheme.web.ts`. Creating an assigned receipt expense against Firebase and testing the updated UI on a physical phone remain manual verification steps.
